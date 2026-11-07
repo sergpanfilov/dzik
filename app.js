@@ -556,7 +556,7 @@
     home();
   }
   // стартовая обложка: закрывается кнопкой START (это же нажатие разрешает звук)
-  $("splashStart").addEventListener("click", () => { $("splash").hidden = true; B.setSound(store.get("dzik-sound", settings.sound_on !== false)); if (B.soundOn()) B.fart("double"); });
+  $("splashStart").addEventListener("click", () => { $("splash").hidden = true; B.setSound(store.get("dzik-sound", settings.sound_on !== false)); });
   if (/nosplash/.test(location.search)) $("splash").hidden = true;
   pig = B.mount($("boarBox"), "idle"); B.preload(["wave", "happy1", "happy2", "happy3", "oops", "oops2", "proud0", "proud", "wow0", "wow", "suspicious", "book", "angry1", "angry2"]);
   applyFont(); applyTheme(); applySound(); renderAuth();

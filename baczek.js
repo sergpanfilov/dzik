@@ -21,12 +21,14 @@
 
   // ---------- звуки ----------
   const pick = a => a[Math.floor(Math.random() * a.length)];
-  let ctx = null, enabled = true;
+  let ctx = null, masterGain = null, enabled = true;
+  const MASTER = .5;   // общая громкость: 50% (решение Сержа)
   function audio() {
-    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); masterGain = ctx.createGain(); masterGain.gain.value = MASTER; masterGain.connect(ctx.destination); } catch (e) { return null; } }
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
+  const out = () => masterGain;
   function noiseBuf(c, sec) { const b = c.createBuffer(1, Math.floor(c.sampleRate * sec), c.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
   // Пук: синтез по сэмплам. Серия «хлопков» (затухающие синусоиды с резонансом 80–500 Гц) с дрожащей частотой
   // повторения 18–75 Гц, низкий гул и немного дыхания; затем мягкий фильтр и лёгкое насыщение.
@@ -67,7 +69,7 @@
       const src = c.createBufferSource(); src.buffer = fartBuffer(c, p);
       const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 650; lp.Q.value = 1.2;
       const g = c.createGain(); g.gain.value = .9;
-      src.connect(lp); lp.connect(g); g.connect(c.destination); src.start(t);
+      src.connect(lp); lp.connect(g); g.connect(out()); src.start(t);
     };
     play(c.currentTime + .01); if (p.twice) play(c.currentTime + .01 + p.dur + .1);
   }
@@ -85,7 +87,7 @@
   function fart(kind) {
     if (!enabled) return; const c = audio(); if (!c) return;
     const names = SND[kind] || SND.normal; const n = pick(names);
-    const playBuf = (b, t) => { const s = c.createBufferSource(); s.buffer = b; const g = c.createGain(); g.gain.value = .9; s.connect(g); g.connect(c.destination); s.start(t); };
+    const playBuf = (b, t) => { const s = c.createBufferSource(); s.buffer = b; const g = c.createGain(); g.gain.value = .9; s.connect(g); g.connect(out()); s.start(t); };
     loadSnd(n).then(b => {
       if (!b) return fartSynth(kind);
       playBuf(b, c.currentTime + .01);
@@ -95,13 +97,13 @@
   // Голос: хрюканье и визг (файлы; без них — тишина).
   function voice(kind, vol) {
     if (!enabled) return; const c = audio(); if (!c) return; const n = pick(SND[kind] || SND.oink);
-    loadSnd(n).then(b => { if (!b) return; const s = c.createBufferSource(); s.buffer = b; const g = c.createGain(); g.gain.value = vol || .7; s.connect(g); g.connect(c.destination); s.start(c.currentTime + .01); });
+    loadSnd(n).then(b => { if (!b) return; const s = c.createBufferSource(); s.buffer = b; const g = c.createGain(); g.gain.value = vol || .7; s.connect(g); g.connect(out()); s.start(c.currentTime + .01); });
   }
   function tone(freq, dur, type, vol, t) {
     const c = audio(); if (!c) return; t = t || c.currentTime;
     const o = c.createOscillator(); o.type = type || "sine"; o.frequency.value = freq;
     const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol || .18, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + dur);
-    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .02);
+    o.connect(g); g.connect(out()); o.start(t); o.stop(t + dur + .02);
   }
   const sfx = {
     ok() { if (!enabled) return; const c = audio(); if (!c) return; tone(660, .14, "sine", .12); tone(990, .22, "sine", .1, c.currentTime + .09); },
