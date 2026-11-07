@@ -209,9 +209,9 @@
     const items = letters ? L : Array.from({ length: 25 }, (_, i) => i + 1);
     const cells = shuffle(items.map((v, i) => ({ v, i })));
     let k = 0, errors = 0, t0 = 0, started = false;
-    say(letters ? "Rozgrzewka: klikaj litery po kolei, A, Ą, B..." : "Rozgrzewka: klikaj liczby od 1 do 25.", "Patrz na kropkę w środku, szukaj wzrokiem, nie kręć głową.");
+    say(letters ? "Rozgrzewka: klikaj litery w kolejności alfabetu: A, Ą, B, C… aż do końca." : "Rozgrzewka: klikaj liczby po kolei: 1, 2, 3… aż do 25.", "Patrz cały czas na zieloną kratkę w środku, a liczb szukaj kątem oka. To ćwiczy szerokie pole widzenia.");
     render(`<section class="card schulte-wrap">${stepsBar("schulte")}<div class="row sp" style="width:100%"><span class="timer" id="tm">0.0 s</span><span class="muted small">pomyłki: <b id="er">0</b></span></div>
-      <div class="schulte" id="grid">${cells.map(c => `<button data-i="${c.i}">${c.v}</button>`).join("")}</div>
+      <div class="schulte" id="grid">${cells.map((c, p) => `<button data-i="${c.i}" class="${p === 12 ? "center" : ""}">${c.v}</button>`).join("")}</div>
       <button class="go" id="skip" hidden>Dalej</button></section>`, true);
     const tick = () => { $("tm").textContent = ((performance.now() - t0) / 1000).toFixed(1) + " s"; };
     stage.querySelectorAll("#grid button").forEach(b => b.addEventListener("click", () => {
