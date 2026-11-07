@@ -1,7 +1,7 @@
 // Dzik czyta — тренажёр осознанного чтения. Вход, ежедневная сессия из шагов, звёзды, уровни, свободная тренировка.
 (() => {
   const C = window.DZIK_CONFIG, B = window.BACZEK, TEXTS = window.DZIK_TEXTS, COMMAS = window.DZIK_COMMAS, FLASH = window.DZIK_FLASH, FACTS = window.DZIK_FACTS;
-  const DEMO = /[?&]demo/.test(location.search);
+  const DEMO = !!window.DZIK_DEMO || /[?&]demo/.test(location.search);
   const sb = !DEMO && window.supabase && C ? window.supabase.createClient(C.supabaseUrl, C.supabaseKey) : null;
   const $ = id => document.getElementById(id);
   const stage = $("stage");

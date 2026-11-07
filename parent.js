@@ -1,7 +1,7 @@
 // Dzik czyta — страница родителя: понимание, знаки, порядок, скорость, типы вопросов, последние сессии, настройки.
 (() => {
   const C = window.DZIK_CONFIG, TEXTS = window.DZIK_TEXTS;
-  const DEMO = /[?&]demo/.test(location.search);
+  const DEMO = !!window.DZIK_DEMO || /[?&]demo/.test(location.search);
   const sb = DEMO ? null : window.supabase.createClient(C.supabaseUrl, C.supabaseKey);
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
