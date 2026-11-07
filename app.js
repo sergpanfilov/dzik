@@ -19,7 +19,7 @@
   const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 
   // ---------- тексты интерфейса (польский) ----------
-  const STEPS = [["pick", "Tekst"], ["schulte", "Rozgrzewka"], ["read", "Czytanie"], ["quiz", "Pytania"], ["lead", "Znaki stop"], ["marks", "Postaw znak"], ["comma", "Przecinek"], ["order", "Kolejność"], ["flash", "Błysk słów"], ["done", "Koniec"]];
+  const STEPS = [["pick", "Historia"], ["schulte", "Rozgrzewka"], ["read", "Czytanie"], ["quiz", "Pytania"], ["lead", "Czytanie na głos"], ["marks", "Znaki"], ["comma", "Przecinek"], ["order", "Kolejność"], ["flash", "Błysk słów"], ["done", "Koniec"]];
   const TYPE_PL = { fakt: "fakt", "szczegół": "szczegół", dlaczego: "dlaczego", "słowo": "słowo", znak: "znak" };
 
   // ---------- состояние ----------
@@ -105,55 +105,63 @@
   function render(html, compact) { stage.innerHTML = html; $("mascot").classList.toggle("compact", !!compact); window.scrollTo({ top: 0 }); }
   function say(text, sub) { $("bubble").innerHTML = esc(text) + (sub ? `<small>${esc(sub)}</small>` : ""); }
   function stepsBar(step) {
-    const i = STEPS.findIndex(s => s[0] === step);
-    return `<div class="steps">` + STEPS.slice(1, -1).map((s, j) => `<span class="step ${j + 1 < i ? "done" : j + 1 === i ? "cur" : ""}">${j + 1 < i ? "✓ " : ""}${s[1]}</span>`).join("") + `</div>`;
+    if (isFree()) return `<div class="krok"><span class="muted small">Dodatkowe ćwiczenie</span></div>`;
+    const chain = ["schulte", "read", "quiz", "lead", "marks", "comma", "order"].concat(flashOn() ? ["flash"] : []);
+    const i = chain.indexOf(step); if (i < 0) return "";
+    return `<div class="krok"><span class="kn">Krok ${i + 1} z ${chain.length}</span><span class="kt">${STEPS.find(s => s[0] === step)[1]}</span><span class="kbar"><i style="width:${Math.round((i + 1) / chain.length * 100)}%"></i></span></div>`;
   }
+  const flashOn = () => settings.flash_on !== false && (doneDaily().length % 2 === 1 || (cur && cur.state.quiz && cur.state.quiz.pct >= 80));
   function renderAuth() {
-    $("loginBtn").hidden = !!user || !sb; $("logoutBtn").hidden = !user;
+    $("loginBtn").hidden = !!user || !sb; $("logoutBtn").hidden = true;
     $("who").hidden = !user; $("who").textContent = user ? (nick || "") : "";
   }
+  const ICON = {
+    sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>`,
+    moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>`,
+    sound: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>`,
+    mute: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>`
+  };
   function applyFont() { document.documentElement.style.setProperty("--read-size", store.get("dzik-font", 24) + "px"); }
-  function applyTheme() { const t = store.get("dzik-theme", null); if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); $("themeBtn").textContent = (t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark" ? "☾" : "☀"; }
-  function applySound() { const on = store.get("dzik-sound", settings.sound_on !== false); B.setSound(on); $("soundBtn").textContent = on ? "♪" : "♪̸"; $("soundBtn").classList.toggle("off", !on); $("soundBtn").setAttribute("aria-pressed", on); }
+  function applyTheme() { const t = store.get("dzik-theme", null); if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); const dark = (t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark"; $("themeBtn").innerHTML = dark ? ICON.moon : ICON.sun; }
+  function applySound() { const on = store.get("dzik-sound", settings.sound_on !== false); B.setSound(on); $("soundBtn").innerHTML = on ? ICON.sound : ICON.mute; $("soundBtn").classList.toggle("off", !on); $("soundBtn").setAttribute("aria-pressed", on); }
 
   // ---------- ДОМ ----------
   function greeting() {
     const away = daysSince(); const h = new Date().getHours();
     if (away !== null && away >= 3) return { r: "angry", t: `${away} dni bez czytania?! Czekałem i czekałem.`, s: "Ale już jesteś. Chodź, poczytamy." };
     if (cur && !cur.done) return { r: "wave", t: "Mamy zaczętą sesję. Dokończymy?", s: "Zacząłem czekać na tym samym miejscu." };
-    if (cur && cur.done) return { r: "book", t: "Dzisiejsza sesja zrobiona. Jestem dumny!", s: "Jutro nowa historia. Możesz jeszcze poćwiczyć w wolnym treningu." };
+    if (cur && cur.done) return { r: "book", t: "Dzisiejsza sesja zrobiona. Jestem dumny!", s: "Jutro nowa historia. Możesz jeszcze poćwiczyć w dodatkowych ćwiczeniach." };
     const st = streak().n;
     if (st >= 3) return { r: "wave", t: `Cześć${nick ? ", " + nick : ""}! Już ${st} dni z rzędu.`, s: "Dziś czeka nowa historia." };
     return { r: "wave", t: h < 12 ? "Dzień dobry! Co dziś czytamy?" : "Cześć! Co dziś czytamy?", s: "Jedna sesja to około 12 minut." };
   }
   function home() {
-    const st = stats(); const lvl = levelNow(); const sk = streak();
+    const st = stats(); const sk = streak();
     const todayDone = cur && cur.done, started = cur && !cur.done && cur.step && cur.step !== "pick";
     const outfit = B.outfit(st); pig.base = outfit; const g = greeting(); pig.play(g.r, null); say(g.t, g.s);
     const days = []; for (let i = 13; i >= 0; i--) { const k = addDays(todayKey(), -i); const on = doneDaily().some(s => s.day === k); days.push(`<i class="${on ? "on" : sk.rests.includes(k) ? "rest" : ""} ${k === todayKey() ? "today" : ""}" title="${k}"></i>`); }
-    const acc = B.OUTFITS.map(o => `<span class="acc-chip ${B.opened(st).includes(o.id) ? "on" : ""}" title="${o.how}">${o.name}${B.opened(st).includes(o.id) ? "" : " · " + o.how}</span>`).join("");
+    const opened = B.opened(st);
+    const need = o => { const n = +o.how.match(/(\d+)/)[1]; const byDays = /dni/.test(o.how); const left = Math.max(0, n - (byDays ? sk.n : st.stars)); return byDays ? (left === 1 ? "jeszcze 1 dzień" : `jeszcze ${left} dni`) : `jeszcze ${left} ★`; };
+    const acc = B.OUTFITS.map(o => `<div class="rew ${opened.includes(o.id) ? "on" : "locked"}" data-acc="${o.id}"><span class="pic"><img src="img/baczek/${o.id}.webp" alt=""></span><b>${o.name}</b><span>${opened.includes(o.id) ? "masz!" : need(o)}</span></div>`).join("");
     const read = doneDaily().slice().reverse();
     const stories = read.length ? read.slice(0, 12).map(s => { const t = textById(s.text_id); return t ? `<button class="story" data-free="${t.id}"><span class="t">${esc(t.title)}</span><span class="st">poziom ${t.level} · <b>${"★".repeat(s.stars || 0)}</b> ${s.stars || 0}/10</span></button>` : ""; }).join("") : `<p class="muted small">Tu pojawią się przeczytane historie.</p>`;
     render(`
       <section class="card hero">
         <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-          <h2>${todayDone ? "Na dziś gotowe!" : started ? "Dokończ dzisiejszą sesję" : "Dzisiejszy trening"}</h2>
+          <h2>${todayDone ? "Dziś już przeczytane!" : started ? "Dokończmy dzisiejszą historię" : "Dzisiejsza historia czeka"}</h2>
           <div class="stats-row">
-            <div class="stat"><b class="star">${st.stars}</b><span>gwiazdek</span></div>
-            <div class="stat"><b>${sk.n}</b><span>dni z rzędu</span></div>
-            <div class="stat"><b>${lvl}</b><span>poziom</span></div>
+            <div class="stat"><b class="star">★ ${st.stars}</b><span>moje gwiazdki</span></div>
+            <div class="stat"><b>${sk.n}</b><span>${sk.n === 1 ? "dzień" : "dni"} czytania z rzędu</span></div>
           </div>
-          <div class="trail" aria-label="Ostatnie 14 dni">${days.join("")}</div>
-          ${cur && !cur.done && cur.step ? stepsBar(cur.step) : ""}
+          <div><p class="muted small" style="margin-bottom:4px">Moje dni czytania (ostatnie dwa tygodnie):</p><div class="trail" aria-label="Ostatnie 14 dni">${days.join("")}</div></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
-          <button class="go" id="goBtn">${todayDone ? "Wolny trening" : started ? "Kontynuuj" : "Trenuj z dzikiem"}</button>
-          ${todayDone ? "" : `<button class="ghost" id="freeBtn">Wolny trening</button>`}
+          <button class="go" id="goBtn">${todayDone ? "Poćwicz jeszcze" : started ? "Czytamy dalej" : "Czytamy!"}</button>
         </div>
       </section>
       <section class="card">
-        <div class="sec-h"><h3>Bączek i jego rzeczy</h3><span class="muted small">za gwiazdki i dni z rzędu</span></div>
-        <div class="acc-list">${acc}</div>
+        <div class="sec-h"><h3>Rzeczy Bączka</h3><span class="muted small">za gwiazdki i dni czytania</span></div>
+        <div class="rewards">${acc}</div>
       </section>
       <section class="card">
         <div class="sec-h"><h3>Moje historie</h3>${role === "viewer" ? `<a class="small muted" href="rodzice.html">Strona rodzica →</a>` : ""}</div>
@@ -161,7 +169,6 @@
       </section>
       <p class="saved"></p>`);
     $("goBtn").addEventListener("click", () => { if (todayDone) freeMenu(); else startDaily(); });
-    if ($("freeBtn")) $("freeBtn").addEventListener("click", freeMenu);
     stage.querySelectorAll("[data-free]").forEach(b => b.addEventListener("click", () => freeMenu(b.dataset.free)));
   }
 
@@ -189,8 +196,7 @@
   // следующий шаг в ежедневной сессии; в свободной тренировке — только выбранный модуль
   function next(after) {
     if (isFree()) return finishFree();
-    const flashOn = settings.flash_on !== false && (doneDaily().length % 2 === 1 || (cur.state.quiz && cur.state.quiz.pct >= 80));
-    const chain = ["pick", "schulte", "read", "quiz", "lead", "marks", "comma", "order", flashOn ? "flash" : null, "done"].filter(Boolean);
+    const chain = ["pick", "schulte", "read", "quiz", "lead", "marks", "comma", "order", flashOn() ? "flash" : null, "done"].filter(Boolean);
     return chain[chain.indexOf(after) + 1];
   }
 
@@ -235,12 +241,11 @@
   // модуль 2: чтение на время
   function read() {
     const t = text(); const n = words(t.body).length; let t0 = 0, acc = 0, running = false;
-    say("Przeczytaj uważnie, w swoim tempie.", "Zwracaj uwagę na kropki i przecinki: to miejsca na oddech.");
+    say("Naciśnij Start i przeczytaj uważnie, w swoim tempie.", "Potem schowam tekst i zadam pytania, więc zapamiętuj.");
     render(`<section class="card">${stepsBar("read")}<div class="text-head"><h2>${esc(t.title)}</h2><span class="muted small">${n} słów · poziom ${t.level}</span></div>
       <div class="reading blur" id="rd">${esc(t.body)}</div>
-      <div class="btns"><button class="go" id="startBtn">Start</button><button class="go warm" id="doneBtn" hidden>Przeczytałam</button><span class="timer muted" id="tm" hidden>0:00</span></div></section>`, true);
-    $("startBtn").addEventListener("click", () => { $("rd").classList.remove("blur"); $("startBtn").hidden = true; $("doneBtn").hidden = false; $("tm").hidden = false; t0 = performance.now(); running = true;
-      readTimer = setInterval(() => { const s = Math.floor((acc + performance.now() - t0) / 1000); $("tm").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }, 500); });
+      <div class="btns"><button class="go" id="startBtn">Start</button><button class="go warm" id="doneBtn" hidden>Przeczytałam</button><span id="tm" hidden></span></div></section>`, true);
+    $("startBtn").addEventListener("click", () => { $("rd").classList.remove("blur"); $("startBtn").hidden = true; $("doneBtn").hidden = false; t0 = performance.now(); running = true; say("Czytam razem z tobą. Kiedy skończysz, naciśnij „Przeczytałam”.", "Nie spiesz się: liczy się to, co zapamiętasz."); });
     $("doneBtn").addEventListener("click", () => {
       acc += performance.now() - t0; running = false; clearInterval(readTimer);
       const sec = Math.max(1, Math.round(acc / 1000)); const wpm = Math.round(n / (sec / 60));
@@ -294,8 +299,8 @@
     const t = text(); const wpm = settings.lead_wpm || 90; const iv = 60000 / wpm;
     const toks = t.body.split(/(\s+)/).map(x => x);  // слова и пробелы/переносы
     const html = toks.map((x, i) => /\s/.test(x) ? x : `<span class="w ${/[?]”?$/.test(x) ? "mark q" : /[!]”?$/.test(x) ? "mark e" : ""}" data-i="${i}">${esc(x)}</span>`).join("");
-    say("Czytaj na głos razem z podświetleniem.", "Na przecinku krótki oddech, na kropce dłuższy, przy pytajniku głos idzie do góry.");
-    render(`<section class="card">${stepsBar("lead")}<div class="text-head"><h2>${esc(t.title)}</h2><span class="muted small">tempo ${wpm} słów/min</span></div>
+    say("Teraz czytaj na głos razem ze mną.", "Na przecinku krótki oddech, na kropce dłuższy, przy pytajniku głos idzie do góry.");
+    render(`<section class="card">${stepsBar("lead")}<div class="text-head"><h2>Czytaj na głos razem ze mną</h2><span class="muted small">${esc(t.title)}</span></div>
       <div class="reading" id="rd">${html}</div>
       <div class="btns"><button class="go" id="startBtn">Start</button><button class="ghost" id="pauseBtn" hidden>Pauza</button><button class="go" id="doneBtn" hidden>Gotowe</button></section>`, true);
     const spans = Array.from(stage.querySelectorAll(".w")); let i = -1, paused = false;
@@ -344,10 +349,10 @@
   function marks() {
     const t = text(); const rnd = seeded(cur.day + t.id); const items = makeMarks(t.body, 4, rnd);
     const total = items.reduce((a, it) => a + it.blanks.length, 0); const fill = {}; let active = null;
-    say("Postaw znaki: kropkę, przecinek, pytajnik, wykrzyknik albo nic.", "Kliknij puste pole, potem znak na dole.");
+    say("W tych zdaniach zgubiły się znaki. Postaw je z powrotem.", "Kliknij puste pole, potem znak na dole: kropkę, przecinek, pytajnik, wykrzyknik albo „nic”.");
     render(`<section class="card">${stepsBar("marks")}${items.map((it, s) => `<p class="marks-s" data-s="${s}">${it.words.map((w, i) => { const b = it.blanks.find(b => b.after === i); return esc(w) + (b ? `<button class="blank" data-b="${s}-${i}" aria-label="znak"></button>` : "") + " "; }).join("")}</p>`).join("")}
       <div class="palette">${[",", ".", "?", "!"].map(m => `<button data-m="${m}">${m}</button>`).join("")}<button data-m="" class="nic">nic</button></div>
-      <div class="btns"><button class="go" id="checkBtn" disabled>Sprawdź</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`, true);
+      <div class="btns"><button class="go" id="checkBtn">Sprawdź</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`, true);
     const blanks = Array.from(stage.querySelectorAll(".blank"));
     const setActive = b => { blanks.forEach(x => x.classList.remove("active")); active = b; if (b) b.classList.add("active"); };
     const firstEmpty = () => blanks.find(b => !(b.dataset.b in fill));
@@ -355,9 +360,10 @@
     blanks.forEach(b => b.addEventListener("click", () => setActive(b)));
     stage.querySelectorAll(".palette button").forEach(p => p.addEventListener("click", () => {
       if (!active) return; const m = p.dataset.m; fill[active.dataset.b] = m; active.textContent = m || "·"; active.classList.add("filled"); B.sfx.tap();
-      $("checkBtn").disabled = Object.keys(fill).length < total; setActive(firstEmpty() || null);
+      setActive(firstEmpty() || null);
     }));
     $("checkBtn").addEventListener("click", () => {
+      const empty = firstEmpty(); if (empty) { setActive(empty); blanks.filter(b => !(b.dataset.b in fill)).forEach(b => { b.classList.add("wrong"); setTimeout(() => b.classList.remove("wrong"), 900); }); say("Zostały puste pola.", "Kliknij puste pole, a potem znak na dole. Jeśli nic nie pasuje, wybierz „nic”."); return; }
       let ok = 0; const wrongMarks = [];
       items.forEach((it, s) => it.blanks.forEach(b => { const el = stage.querySelector(`[data-b="${s}-${b.after}"]`); const got = fill[`${s}-${b.after}`]; const good = got === b.ans; if (good) ok++; else wrongMarks.push(b.ans || "nic"); el.classList.add(good ? "right" : "wrong"); if (!good) el.textContent = b.ans || "·"; }));
       stage.querySelector(".palette").hidden = true; $("checkBtn").hidden = true; $("nextBtn").hidden = false;
@@ -416,7 +422,7 @@
         cur.state.order = { attempts: attempt, firstOk: all && attempt === 1, right, total: arr.length, score };
         box.querySelectorAll("button").forEach(b => b.disabled = true); $("checkBtn").hidden = true; $("nextBtn").hidden = false;
         pig.play(all ? (attempt === 1 ? "proud" : "happy") : "oops", "order"); say(all ? (attempt === 1 ? "Wszystko po kolei za pierwszym razem!" : "Teraz dobrze.") : `${right} z ${arr.length} na miejscu.`, all ? "" : "Jutro będzie lepiej.");
-      } else { pig.play("oops", "order"); say(`${right} z ${arr.length} na swoim miejscu. Czerwone popraw.`, "Masz jeszcze jedną próbę."); setTimeout(() => box.querySelectorAll(".ev").forEach(el => el.classList.remove("right", "wrong")), 1800); }
+      } else { pig.play("oops", "order"); say(`${right} z ${arr.length} na swoim miejscu. Czerwone są nie na swoim miejscu.`, "Przesuń je i sprawdź jeszcze raz."); }
     });
     $("nextBtn").addEventListener("click", () => setStep(next("order")));
   }
@@ -461,17 +467,18 @@
     const r = sc.stars >= 8 ? "proud" : sc.stars >= 5 ? "happy" : "smile";
     pig.base = B.outfit(after); pig.play(r, "done");
     say(sc.stars >= 8 ? "To był świetny trening!" : sc.stars >= 5 ? "Dobra robota!" : "Każdy dzień czytania się liczy.", newAcc.length ? `Bączek ma nowe: ${newAcc.map(a => a.name).join(", ")}!` : "");
+    const s = cur.state; const q = s.quiz ? s.quiz.answers : []; const qOk = q.filter(x => x.ok).length;
+    const rows = [
+      ["Pytania", `${qOk} z ${q.length}`], s.marks ? ["Znaki", `${s.marks.ok} z ${s.marks.total}`] : null, s.comma ? ["Przecinek", `${s.comma.ok} z ${s.comma.total || s.comma.done.length}`] : null,
+      s.order ? ["Kolejność", s.order.firstOk ? "od razu dobrze!" : s.order.right === s.order.total ? "za drugim razem" : `${s.order.right} z ${s.order.total}`] : null, s.flash ? ["Błysk słów", `${s.flash.ok} z ${s.flash.total}`] : null
+    ].filter(Boolean);
+    const sk = streak().n;
     render(`<section class="card res">
       <div class="big-stars"><b>${"★".repeat(sc.stars)}</b>${"★".repeat(10 - sc.stars)}</div>
-      <h2>${sc.stars} z 10 gwiazdek</h2>
-      <div class="nums">
-        <div><b>${sc.comp}%</b><span>rozumienie</span></div><div><b>${sc.punct}%</b><span>znaki</span></div>
-        <div><b>${cur.state.order ? (cur.state.order.firstOk ? "✓" : cur.state.order.right + "/" + cur.state.order.total) : "–"}</b><span>kolejność</span></div>
-        <div><b>${sc.wpm}</b><span>słów/min${sc.tooFast ? " · za szybko" : ""}</span></div>
-      </div>
-      <p class="muted small">Gwiazdki: rozumienie 50%, znaki 20%, kolejność 20%, tempo 10% (tylko gdy rozumienie ≥ 80%).</p>
-      ${newAcc.length ? `<p class="pill good">Nowe: ${newAcc.map(a => esc(a.name)).join(", ")}</p>` : ""}
-      <p class="pill info">${streak().n} dni z rzędu</p>
+      <h2>${sc.stars} ${sc.stars === 1 ? "gwiazdka" : sc.stars >= 2 && sc.stars <= 4 ? "gwiazdki" : "gwiazdek"}</h2>
+      <div class="rows">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("")}</div>
+      ${newAcc.length ? `<p class="pill good">Bączek ma nowe: ${newAcc.map(a => esc(a.name)).join(", ")}!</p>` : ""}
+      <p class="pill info">${sk === 1 ? "Pierwszy dzień czytania!" : `Czytasz już ${sk} dni z rzędu!`}</p>
       <div class="fact"><b>Bączek opowiada:</b> ${esc(fact)}</div>
       ${tomorrow ? `<p class="muted small">Jutro: „${esc(tomorrow.title)}”.</p>` : ""}
       <div class="btns"><button class="go" id="homeBtn">Do domu</button></div><p class="saved"></p></section>`);
@@ -482,10 +489,10 @@
   // ---------- СВОБОДНАЯ ТРЕНИРОВКА ----------
   function freeMenu(textId) {
     const lvl = levelNow(); let sel = textId || null;
-    say("Wolny trening: wybierz ćwiczenie i historię.", "Nie liczy się do dni z rzędu, ale Bączek i tak się cieszy.");
+    say("Dodatkowe ćwiczenia: wybierz, co chcesz poćwiczyć, i historię.", "To nie liczy się do dni czytania, ale Bączek i tak się cieszy.");
     const byLevel = {}; TEXTS.forEach(t => (byLevel[t.level] = byLevel[t.level] || []).push(t));
-    render(`<section class="card"><h2>Wolny trening</h2>
-      <div class="row"><button class="ghost" data-m="schulte">Rozgrzewka</button><button class="ghost" data-m="read">Czytanie i pytania</button><button class="ghost" data-m="lead">Czytanie z rytmem</button><button class="ghost" data-m="marks">Postaw znak</button><button class="ghost" data-m="comma">Przecinek</button><button class="ghost" data-m="order">Kolejność</button><button class="ghost" data-m="flash">Błysk słów</button></div>
+    render(`<section class="card"><h2>Dodatkowe ćwiczenia</h2>
+      <div class="row"><button class="ghost" data-m="schulte">Rozgrzewka</button><button class="ghost" data-m="read">Czytanie i pytania</button><button class="ghost" data-m="lead">Czytanie na głos</button><button class="ghost" data-m="marks">Znaki</button><button class="ghost" data-m="comma">Przecinek</button><button class="ghost" data-m="order">Kolejność</button><button class="ghost" data-m="flash">Błysk słów</button></div>
       <h3>Historia</h3>${Object.keys(byLevel).map(l => `<p class="muted small">Poziom ${l}${+l > lvl + 1 ? " · trudniejsze" : ""}</p><div class="stories">${byLevel[l].map(t => `<button class="story ${t.id === sel ? "next" : ""}" data-t="${t.id}"><span class="t">${esc(t.title)}</span><span class="st">${words(t.body).length} słów</span></button>`).join("")}</div>`).join("")}
       <div class="btns"><button class="ghost" id="backBtn">← Do domu</button></div></section>`);
     let mod = "read";
@@ -504,8 +511,8 @@
     const s = cur.state; if (cur.step === "read" && !s.quiz) { return goStep("quiz"); }
     cur.done = true; cur.comp = s.quiz ? s.quiz.pct : null; cur.wpm = s.read ? s.read.wpm : null; cur.too_fast = !!(s.read && s.read.tooFast);
     cur.punct = s.marks ? pct(s.marks.ok, s.marks.total) : (s.comma ? pct(s.comma.ok, s.comma.total || 1) : null); cur.ord = s.order ? s.order.score : null; cur.seconds = s.read ? s.read.sec : null;
-    await db.save(cur); cur = dailyBackup; pig.play("happy", "free"); say("Wolny trening zrobiony.", "Wracamy do domu.");
-    render(`<section class="card res"><h2>Gotowe!</h2><p class="muted">Wynik zapisany w wolnych treningach.</p><div class="btns"><button class="go" id="homeBtn">Do domu</button><button class="ghost" id="againBtn">Jeszcze jedno</button></div><p class="saved"></p></section>`);
+    await db.save(cur); cur = dailyBackup; pig.play("happy", "free"); say("Dodatkowe ćwiczenie zrobione.", "Wracamy do domu.");
+    render(`<section class="card res"><h2>Gotowe!</h2><p class="muted">Brawo za dodatkową pracę.</p><div class="btns"><button class="go" id="homeBtn">Do domu</button><button class="ghost" id="againBtn">Jeszcze jedno ćwiczenie</button></div><p class="saved"></p></section>`);
     $("homeBtn").addEventListener("click", home); $("againBtn").addEventListener("click", () => freeMenu());
   }
   // В свободной тренировке next() → finishFree; но «Czytanie i pytania» идёт read → quiz → конец.
@@ -531,6 +538,8 @@
   }
   const login = () => sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + location.pathname } });
   $("loginBtn").addEventListener("click", login);
+  $("brandLink").addEventListener("click", e => { e.preventDefault(); if (user && role && studentEmail) home(); });
+  $("who").addEventListener("click", () => { $("logoutBtn").hidden = !$("logoutBtn").hidden; });
   $("logoutBtn").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
   $("fontMinus").addEventListener("click", () => { store.set("dzik-font", Math.max(18, store.get("dzik-font", 24) - 2)); applyFont(); });
   $("fontPlus").addEventListener("click", () => { store.set("dzik-font", Math.min(40, store.get("dzik-font", 24) + 2)); applyFont(); });
