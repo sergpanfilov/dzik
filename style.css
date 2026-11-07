@@ -260,7 +260,19 @@ tr.open { cursor: pointer; } tr.open:hover td { background: var(--bg); }
 /* стартовая обложка в комикс-стиле */
 #splash { position: fixed; inset: 0; z-index: 30; overflow: hidden; display: grid; place-items: center; padding: 16px;
   background: #F7C948 radial-gradient(circle, rgba(0,0,0,.14) 1.6px, transparent 1.8px) 0 0 / 11px 11px; }
-#splash .rays { position: absolute; inset: -50%; background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.35) 0 7deg, transparent 7deg 15deg); animation: spin 60s linear infinite; }
+#splash .rays { position: absolute; inset: -50%; background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.42) 0 7deg, transparent 7deg 15deg); animation: spin 18s linear infinite; }
+#splash .floaters { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+#splash .floaters span { position: absolute; left: var(--x); bottom: -12%; font-family: "Bangers", var(--display); font-size: clamp(34px, 7vw, 64px); color: #fff; -webkit-text-stroke: 2px #1D1A12; paint-order: stroke fill; text-shadow: 4px 4px 0 #1D1A12; opacity: 0; animation: floatUp 9s linear infinite; animation-delay: var(--d); transform: rotate(var(--r)); }
+#splash .floaters span:nth-child(odd) { color: #E4465A; } #splash .floaters span:nth-child(3n) { color: #2E8B57; }
+@keyframes floatUp { 0% { transform: translateY(0) rotate(var(--r)); opacity: 0; } 8% { opacity: .9; } 92% { opacity: .9; } 100% { transform: translateY(-125vh) rotate(calc(var(--r) * -1)); opacity: 0; } }
+#splash .cover-pig img:not(.cover-cloud) { position: relative; animation: bob 2.6s ease-in-out infinite; transform-origin: 50% 100%; }
+#splash .cover-cloud { position: absolute; right: -20%; bottom: 14%; width: 34%; opacity: 0; animation: cloudPop 5s ease-out infinite 1.2s; transform-origin: 30% 80%; filter: none !important; }
+@keyframes bob { 0%, 100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-3%); } }
+@keyframes cloudPop { 0%, 55% { opacity: 0; transform: translate(-10px, 10px) scale(.3); } 62% { opacity: 1; } 90%, 100% { opacity: 0; transform: translate(40px, -70px) scale(1.3); } }
+#splash .bubble-c { position: absolute; left: -24%; top: 4%; font-family: "Bangers", var(--display); font-size: clamp(15px, 3.4vw, 21px); letter-spacing: .04em; color: #1D1A12; background: #fff; border: 3px solid #1D1A12; border-radius: 16px; padding: 6px 12px; transform: rotate(-8deg); box-shadow: 3px 3px 0 #1D1A12; animation: wiggle 3s ease-in-out infinite; }
+#splash .bubble-c::after { content: ""; position: absolute; right: -6px; bottom: -10px; width: 14px; height: 14px; background: #fff; border-right: 3px solid #1D1A12; border-bottom: 3px solid #1D1A12; transform: rotate(20deg); }
+@keyframes wiggle { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(-4deg) translateY(-3px); } }
+#splash .what { font-family: var(--body); font-weight: 800; font-size: clamp(14px, 3vw, 17px); color: #1D1A12; background: rgba(255,255,255,.85); border: 2px solid #1D1A12; border-radius: 12px; padding: 6px 14px; max-width: 420px; margin-top: 4px; }
 #splash .cover { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; max-width: 520px; width: 100%; }
 #splash .kicker { font-family: "Bangers", var(--display); font-size: clamp(18px, 4vw, 24px); letter-spacing: .08em; color: #1D1A12; background: #fff; border: 3px solid #1D1A12; padding: 2px 14px; transform: rotate(-3deg); box-shadow: 4px 4px 0 #1D1A12; }
 #splash .big { font-family: "Bangers", var(--display); font-weight: 400; font-size: clamp(74px, 20vw, 150px); line-height: .95; color: #E4465A; letter-spacing: .03em; -webkit-text-stroke: 3px #1D1A12; paint-order: stroke fill; text-shadow: 6px 6px 0 #1D1A12, 8px 8px 0 #fff; transform: rotate(-4deg); margin-top: 8px; }
@@ -268,7 +280,8 @@ tr.open { cursor: pointer; } tr.open:hover td { background: var(--bg); }
 #splash .cover-pig { position: relative; width: min(62vw, 300px); margin-top: 6px; }
 #splash .cover-pig img { width: 100%; height: auto; filter: drop-shadow(6px 8px 0 rgba(29,26,18,.35)); }
 #splash .pow { position: absolute; right: -8%; top: 6%; font-family: "Bangers", var(--display); font-size: clamp(16px, 3.6vw, 22px); letter-spacing: .05em; color: #1D1A12; background: #fff; padding: 8px 14px; border: 3px solid #1D1A12; clip-path: polygon(50% 0, 62% 14%, 80% 6%, 78% 24%, 98% 30%, 84% 44%, 100% 60%, 80% 62%, 86% 82%, 66% 74%, 56% 100%, 46% 78%, 26% 92%, 30% 70%, 6% 70%, 20% 54%, 0 40%, 20% 32%, 12% 12%, 34% 20%); transform: rotate(10deg); }
-#splash .start { font-family: "Bangers", var(--display); font-size: clamp(30px, 7vw, 44px); letter-spacing: .1em; color: #1D1A12; background: #fff; border: 4px solid #1D1A12; border-radius: 14px; padding: 8px 44px; box-shadow: 6px 6px 0 #1D1A12; transform: rotate(-2deg); margin-top: 10px; cursor: pointer; }
+#splash .start { font-family: "Bangers", var(--display); font-size: clamp(30px, 7vw, 44px); letter-spacing: .1em; color: #1D1A12; background: #FFE98A; border: 4px solid #1D1A12; border-radius: 14px; padding: 8px 44px; box-shadow: 6px 6px 0 #1D1A12; transform: rotate(-2deg); margin-top: 10px; cursor: pointer; animation: pulseBtn 1.6s ease-in-out infinite; }
+@keyframes pulseBtn { 50% { transform: rotate(-2deg) scale(1.05); box-shadow: 8px 8px 0 #1D1A12; } }
 #splash .start:hover { background: #FFE98A; } #splash .start:active { transform: translate(4px, 4px) rotate(-2deg); box-shadow: 2px 2px 0 #1D1A12; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { #splash .rays { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #splash .rays, #splash .floaters span, #splash .cover-pig img, #splash .cover-cloud, #splash .bubble-c, #splash .start { animation: none; } }

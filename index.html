@@ -10,17 +10,21 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800&family=Lexend:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%238E6240'/%3E%3Cellipse cx='21' cy='19' rx='6' ry='4.5' fill='%23D9937A'/%3E%3Ccircle cx='12' cy='13' r='2.5' fill='white'/%3E%3Ccircle cx='12.6' cy='13.4' r='1.3' fill='%231D2140'/%3E%3C/svg%3E">
+<link rel="icon" href="img/baczek/idle.webp">
 </head>
 <body>
 <canvas id="confetti" hidden></canvas>
 <div id="splash" role="dialog" aria-label="Dzik czyta">
   <div class="rays"></div>
+  <div class="floaters" aria-hidden="true">
+    <span style="--x:8%;--d:0s;--r:-12deg">A</span><span style="--x:22%;--d:1.4s;--r:9deg">ą</span><span style="--x:36%;--d:.7s;--r:-6deg">?</span><span style="--x:52%;--d:2.1s;--r:14deg">ż</span><span style="--x:66%;--d:.3s;--r:-9deg">!</span><span style="--x:80%;--d:1.8s;--r:7deg">ł</span><span style="--x:92%;--d:1s;--r:-15deg">,</span><span style="--x:14%;--d:2.6s;--r:11deg">ś</span><span style="--x:46%;--d:3.1s;--r:-4deg">★</span><span style="--x:74%;--d:2.4s;--r:5deg">★</span>
+  </div>
   <div class="cover">
-    <p class="kicker">Dzik czyta przedstawia</p>
+    <p class="kicker">Trening czytania z dzikiem</p>
     <h1 class="big">BĄCZEK</h1>
-    <p class="strip">dzik, który czyta wszystko</p>
-    <div class="cover-pig"><img src="img/baczek/book.webp" alt=""><span class="pow" id="splashEp">odcinek 1</span></div>
+    <p class="strip">czytaj uważnie, zbieraj gwiazdki</p>
+    <div class="cover-pig"><img class="cover-cloud" src="img/baczek/cloud2.webp" alt=""><img src="img/baczek/book.webp" alt=""><span class="pow" id="splashEp">odcinek 1</span><span class="bubble-c">Przeczytaj i odpowiedz!</span></div>
+    <p class="what">Codziennie jedna historia, pytania, znaki i kolejność wydarzeń. Około 12 minut.</p>
     <button class="start" id="splashStart">START</button>
   </div>
 </div>
