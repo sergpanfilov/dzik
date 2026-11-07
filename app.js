@@ -552,7 +552,6 @@
     if (!studentEmail) return gate("Nie znalazłem ucznia.", "Rodzic: dodaj ucznia w ustawieniach.");
     await db.loadAll();
     cur = daily().find(s => s.day === todayKey()) || null;
-    $("splashEp").textContent = "odcinek " + (doneDaily().length + (cur && cur.done ? 0 : 1));
     home();
   }
   // стартовая обложка: закрывается кнопкой START (это же нажатие разрешает звук)
