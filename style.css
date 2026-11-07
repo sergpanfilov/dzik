@@ -150,7 +150,9 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .schulte button.hit { background: color-mix(in srgb, var(--ok) 22%, var(--surface)); border-color: var(--ok); color: var(--muted); }
 .schulte button.miss { background: color-mix(in srgb, var(--bad) 20%, var(--surface)); border-color: var(--bad); }
 .schulte button.red { color: var(--bad); }
-.schulte button.center { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.schulte button.center { background: #C6EBC9; border: 2.5px solid #2E8B57; }
+:root[data-theme="dark"] .schulte button.center { background: #2C5A35; border-color: #4FBF7F; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .schulte button.center { background: #2C5A35; border-color: #4FBF7F; } }
 .timer { font-family: var(--display); font-size: 28px; font-variant-numeric: tabular-nums; }
 
 /* чтение */
