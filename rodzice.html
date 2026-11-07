@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dzik czyta: для родителей</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800&family=Lexend:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="img/baczek/idle.webp">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><span class="mini"><img src="img/baczek/idle.webp" alt=""></span><h1>Dzik czyta</h1><span class="muted small">для родителей</span></a>
+    <div class="top-right">
+      <span class="who" id="who" hidden></span>
+      <button class="gbtn" id="loginBtn" hidden>Войти через Google</button>
+      <button class="ghost" id="logoutBtn" hidden>Выйти</button>
+    </div>
+  </header>
+  <p class="note" id="msg">Загружаю…</p>
+  <div id="main" class="wrap" hidden style="gap:16px">
+    <h2 id="title" style="font-size:clamp(24px,5vw,34px)"></h2>
+    <div class="tiles" id="tiles"></div>
+
+    <section class="card">
+      <div class="sec-h"><h3>Понимание текста, %</h3><div class="lg" id="lg1"></div></div>
+      <div class="chart" id="chComp"></div>
+      <p class="muted small">Доля верных ответов на вопросы после чтения, по дням. Подсказка из текста считается за половину. Зелёная полоса: цель 80% и выше.</p>
+    </section>
+    <section class="card">
+      <div class="sec-h"><h3>Знаки препинания и порядок событий, %</h3><div class="lg" id="lg2"></div></div>
+      <div class="chart" id="chPunct"></div>
+    </section>
+    <section class="card">
+      <div class="sec-h"><h3>Скорость чтения, слов в минуту</h3><div class="lg" id="lg3"></div></div>
+      <div class="chart" id="chWpm"></div>
+      <p class="muted small" id="wpmNote"></p>
+    </section>
+
+    <section class="card">
+      <h3>По типам вопросов</h3>
+      <div class="tbl-wrap"><table id="types"></table></div>
+      <p class="muted small">Где ошибок больше всего: на это стоит обратить внимание при чтении вместе.</p>
+    </section>
+
+    <section class="card">
+      <h3>Последние сессии</h3>
+      <p class="muted small">Нажмите строку, чтобы увидеть вопросы с ошибками.</p>
+      <div class="tbl-wrap"><table id="recent"></table></div>
+    </section>
+
+    <section class="card">
+      <h3>Настройки</h3>
+      <div class="form">
+        <label>Уровень текстов <select id="sLevel"><option value="">автоматически</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select><span class="hint" id="levelHint"></span></label>
+        <label>Порог «слишком быстро», слов в минуту <input type="number" id="sFast" min="40" max="400" step="5" placeholder="пока не задан"><span class="hint" id="fastHint"></span></label>
+        <label>Темп ведущей подсветки, слов в минуту <input type="number" id="sLead" min="40" max="200" step="5"></label>
+        <label class="chk"><input type="checkbox" id="sFlash"> Бонус «Błysk słów» (через день или за хорошую сессию)</label>
+        <label class="chk"><input type="checkbox" id="sSound"> Звук включён по умолчанию</label>
+        <div class="btns" style="justify-content:flex-start"><button class="go" id="saveBtn">Сохранить</button><span class="saved" id="saved"></span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Свои тексты</h3>
+      <p class="muted small">Добавление своих текстов с автоматической подготовкой вопросов появится на третьем этапе.</p>
+    </section>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="texts.js"></script>
+<script src="parent.js"></script>
+</body>
+</html>
