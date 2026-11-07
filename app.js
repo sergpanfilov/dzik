@@ -102,7 +102,7 @@
   }
 
   // ---------- рендер общих частей ----------
-  function render(html) { stage.innerHTML = html; window.scrollTo({ top: 0 }); }
+  function render(html, compact) { stage.innerHTML = html; $("mascot").classList.toggle("compact", !!compact); window.scrollTo({ top: 0 }); }
   function say(text, sub) { $("bubble").innerHTML = esc(text) + (sub ? `<small>${esc(sub)}</small>` : ""); }
   function stepsBar(step) {
     const i = STEPS.findIndex(s => s[0] === step);
@@ -198,7 +198,7 @@
   function pick() {
     const lvl = cur.level || levelNow(); const opts = candidates(lvl, cur.day);
     say("Którą historię dziś czytamy?", "Wybierz jedną. Druga poczeka na inny dzień.");
-    render(`<section class="card">${stepsBar("pick")}<h2>Poziom ${lvl}</h2><div class="choices">${opts.map(t => `<button class="choice" data-id="${t.id}"><span class="t">${esc(t.title)}</span><span class="m">${words(t.body).length} słów · ${esc(t.topic)}</span></button>`).join("")}</div></section>`);
+    render(`<section class="card">${stepsBar("pick")}<h2>Poziom ${lvl}</h2><div class="choices">${opts.map(t => `<button class="choice" data-id="${t.id}"><span class="t">${esc(t.title)}</span><span class="m">${words(t.body).length} słów · ${esc(t.topic)}</span></button>`).join("")}</div></section>`, true);
     stage.querySelectorAll(".choice").forEach(b => b.addEventListener("click", () => { B.sfx.tap(); cur.text_id = b.dataset.id; cur.level = lvl; setStep(next("pick")); }));
   }
 
@@ -212,7 +212,7 @@
     say(letters ? "Rozgrzewka: klikaj litery po kolei, A, Ą, B..." : "Rozgrzewka: klikaj liczby od 1 do 25.", "Patrz na kropkę w środku, szukaj wzrokiem, nie kręć głową.");
     render(`<section class="card schulte-wrap">${stepsBar("schulte")}<div class="row sp" style="width:100%"><span class="timer" id="tm">0.0 s</span><span class="muted small">pomyłki: <b id="er">0</b></span></div>
       <div class="schulte" id="grid">${cells.map(c => `<button data-i="${c.i}">${c.v}</button>`).join("")}</div>
-      <button class="go" id="skip" hidden>Dalej</button></section>`);
+      <button class="go" id="skip" hidden>Dalej</button></section>`, true);
     const tick = () => { $("tm").textContent = ((performance.now() - t0) / 1000).toFixed(1) + " s"; };
     stage.querySelectorAll("#grid button").forEach(b => b.addEventListener("click", () => {
       if (!started) { started = true; t0 = performance.now(); schulteTimer = setInterval(tick, 100); }
@@ -238,7 +238,7 @@
     say("Przeczytaj uważnie, w swoim tempie.", "Zwracaj uwagę na kropki i przecinki: to miejsca na oddech.");
     render(`<section class="card">${stepsBar("read")}<div class="text-head"><h2>${esc(t.title)}</h2><span class="muted small">${n} słów · poziom ${t.level}</span></div>
       <div class="reading blur" id="rd">${esc(t.body)}</div>
-      <div class="btns"><button class="go" id="startBtn">Start</button><button class="go warm" id="doneBtn" hidden>Przeczytałam</button><span class="timer muted" id="tm" hidden>0:00</span></div></section>`);
+      <div class="btns"><button class="go" id="startBtn">Start</button><button class="go warm" id="doneBtn" hidden>Przeczytałam</button><span class="timer muted" id="tm" hidden>0:00</span></div></section>`, true);
     $("startBtn").addEventListener("click", () => { $("rd").classList.remove("blur"); $("startBtn").hidden = true; $("doneBtn").hidden = false; $("tm").hidden = false; t0 = performance.now(); running = true;
       readTimer = setInterval(() => { const s = Math.floor((acc + performance.now() - t0) / 1000); $("tm").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }, 500); });
     $("doneBtn").addEventListener("click", () => {
@@ -270,7 +270,7 @@
       <p class="quiz-q">${esc(Q.q)}</p>
       <div class="peek-box" id="peek" hidden><div class="reading" style="font-size:calc(var(--read-size)*.75)">${esc(t.body)}</div></div>
       <div class="opts">${opts.map((o, k) => `<button class="opt" data-k="${o.k}"><span class="k">${"ABC"[k]}</span><span>${esc(o.a)}</span></button>`).join("")}</div>
-      <div class="btns sp"><button class="ghost peek" id="peekBtn">Podejrzyj tekst (raz)</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`);
+      <div class="btns sp"><button class="ghost peek" id="peekBtn">Podejrzyj tekst (raz)</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`, true);
     $("peekBtn").addEventListener("click", () => { peeked = true; $("peek").hidden = false; $("peekBtn").disabled = true; $("peekBtn").textContent = "Podejrzane: pół gwiazdki"; });
     stage.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
       if (answered) return; answered = true; const ok = b.dataset.k === "0";
@@ -297,7 +297,7 @@
     say("Czytaj na głos razem z podświetleniem.", "Na przecinku krótki oddech, na kropce dłuższy, przy pytajniku głos idzie do góry.");
     render(`<section class="card">${stepsBar("lead")}<div class="text-head"><h2>${esc(t.title)}</h2><span class="muted small">tempo ${wpm} słów/min</span></div>
       <div class="reading" id="rd">${html}</div>
-      <div class="btns"><button class="go" id="startBtn">Start</button><button class="ghost" id="pauseBtn" hidden>Pauza</button><button class="go" id="doneBtn" hidden>Gotowe</button></section>`);
+      <div class="btns"><button class="go" id="startBtn">Start</button><button class="ghost" id="pauseBtn" hidden>Pauza</button><button class="go" id="doneBtn" hidden>Gotowe</button></section>`, true);
     const spans = Array.from(stage.querySelectorAll(".w")); let i = -1, paused = false;
     function stepLead() {
       if (paused) return;
@@ -347,7 +347,7 @@
     say("Postaw znaki: kropkę, przecinek, pytajnik, wykrzyknik albo nic.", "Kliknij puste pole, potem znak na dole.");
     render(`<section class="card">${stepsBar("marks")}${items.map((it, s) => `<p class="marks-s" data-s="${s}">${it.words.map((w, i) => { const b = it.blanks.find(b => b.after === i); return esc(w) + (b ? `<button class="blank" data-b="${s}-${i}" aria-label="znak"></button>` : "") + " "; }).join("")}</p>`).join("")}
       <div class="palette">${[",", ".", "?", "!"].map(m => `<button data-m="${m}">${m}</button>`).join("")}<button data-m="" class="nic">nic</button></div>
-      <div class="btns"><button class="go" id="checkBtn" disabled>Sprawdź</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`);
+      <div class="btns"><button class="go" id="checkBtn" disabled>Sprawdź</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`, true);
     const blanks = Array.from(stage.querySelectorAll(".blank"));
     const setActive = b => { blanks.forEach(x => x.classList.remove("active")); active = b; if (b) b.classList.add("active"); };
     const firstEmpty = () => blanks.find(b => !(b.dataset.b in fill));
@@ -376,7 +376,7 @@
     say(i === 0 ? "Przecinek potrafi zmienić wszystko." : "Jeszcze jeden.", "Które zdanie pasuje do znaczenia?");
     render(`<section class="card">${stepsBar("comma")}<p class="muted small">Znaczenie:</p><p class="quiz-q">${esc(it.meaning)}</p>
       <div class="opts">${opts.map((o, k) => `<button class="opt" data-k="${o.k}"><span class="k">${"AB"[k]}</span><span>${esc(o.a)}</span></button>`).join("")}</div>
-      <p class="note" id="joke" hidden></p><div class="btns"><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`);
+      <p class="note" id="joke" hidden></p><div class="btns"><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`, true);
     let answered = false;
     stage.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
       if (answered) return; answered = true; const ok = b.dataset.k === "0"; if (ok) st.ok++;
@@ -393,7 +393,7 @@
     if (arr.every((x, i) => x.i === i)) arr = arr.reverse();
     let attempt = 0;
     say("Ułóż wydarzenia po kolei.", "Przeciągnij kartę albo użyj strzałek. Potem Sprawdź.");
-    render(`<section class="card">${stepsBar("order")}<div class="cards" id="cards"></div><div class="btns"><button class="go" id="checkBtn">Sprawdź</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`);
+    render(`<section class="card">${stepsBar("order")}<div class="cards" id="cards"></div><div class="btns"><button class="go" id="checkBtn">Sprawdź</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`, true);
     const box = $("cards");
     function draw() {
       box.innerHTML = arr.map((x, i) => `<div class="ev" data-i="${x.i}"><span class="n">${i + 1}</span><span>${esc(x.e)}</span><span class="mv"><button data-up aria-label="wyżej">▲</button><button data-dn aria-label="niżej">▼</button></span></div>`).join("");
@@ -429,7 +429,7 @@
     const set = pool.find(s => s[0] === st.sets[i]) || pool[0]; const opts = shuffle(set);
     say(i === 0 ? "Bonus: słowo błyśnie na chwilę. Które to było?" : "Patrz uważnie.", `Słowo pokazuje się przez ${ms / 1000} s.`);
     render(`<section class="card">${stepsBar("flash")}<p class="muted small">${i + 1} z 5</p><div class="flash-word" id="fw"></div><div class="flash-opts" id="fo" hidden>${opts.map(o => `<button class="opt" data-w="${esc(o)}">${esc(o)}</button>`).join("")}</div>
-      <div class="btns"><button class="go" id="showBtn">Pokaż</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`);
+      <div class="btns"><button class="go" id="showBtn">Pokaż</button><button class="go" id="nextBtn" hidden>Dalej</button></div></section>`, true);
     $("showBtn").addEventListener("click", () => { $("showBtn").hidden = true; $("fw").textContent = set[0]; setTimeout(() => { $("fw").textContent = "·"; $("fo").hidden = false; }, ms); });
     let answered = false;
     stage.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {

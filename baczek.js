@@ -27,30 +27,48 @@
     return ctx;
   }
   function noiseBuf(c, sec) { const b = c.createBuffer(1, Math.floor(c.sampleRate * sec), c.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+  // Пук: синтез по сэмплам. Серия «хлопков» (затухающие синусоиды с резонансом 80–500 Гц) с дрожащей частотой
+  // повторения 18–75 Гц, низкий гул и немного дыхания; затем мягкий фильтр и лёгкое насыщение.
   const FARTS = {
-    small: { f: 110, dur: .28, lfo: 30, vol: .25, slide: .7, noise: .25 },
-    normal: { f: 95, dur: .5, lfo: 24, vol: .45, slide: .6, noise: .35 },
-    big: { f: 75, dur: 1.1, lfo: 19, vol: .6, slide: .5, noise: .45 },
-    squeak: { f: 180, dur: .4, lfo: 40, vol: .35, slide: 1.4, noise: .2 },
-    double: { f: 100, dur: .22, lfo: 28, vol: .4, slide: .8, noise: .3, twice: true },
-    long: { f: 85, dur: 1.6, lfo: 22, vol: .5, slide: .45, noise: .4 }
+    small:  { dur: .22, rate: [48, 60], res: [200, 260], decay: 40, rumble: .1, breath: .25, vol: .5, slide: .9 },
+    normal: { dur: .55, rate: [26, 36], res: [120, 160], decay: 28, rumble: .25, breath: .2, vol: .8, slide: .75 },
+    big:    { dur: 1.2, rate: [18, 28], res: [85, 120],  decay: 20, rumble: .4, breath: .25, vol: 1,  slide: .6 },
+    squeak: { dur: .4,  rate: [55, 75], res: [320, 520], decay: 60, rumble: .05, breath: .15, vol: .55, slide: 1.5 },
+    double: { dur: .28, rate: [30, 40], res: [130, 170], decay: 30, rumble: .2, breath: .2, vol: .75, slide: .8, twice: true },
+    long:   { dur: 1.7, rate: [20, 34], res: [95, 140],  decay: 24, rumble: .35, breath: .3, vol: .9, slide: .55, wobble: true }
   };
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function fartBuffer(c, p) {
+    const sr = c.sampleRate, n = Math.floor(sr * (p.dur + .15)), d = new Float32Array(n);
+    const env = t => { const a = Math.min(1, t / .02); const r = t > p.dur ? Math.max(0, 1 - (t - p.dur) / .12) : 1; const w = p.wobble ? .75 + .25 * Math.sin(t * 9) : 1; return a * r * w * (t < p.dur * .8 ? 1 : 1 - (t - p.dur * .8) / (p.dur * .2) * .5); };
+    let t = 0; const rate0 = rnd(p.rate[0], p.rate[1]), res0 = rnd(p.res[0], p.res[1]);
+    while (t < p.dur) {
+      const prog = t / p.dur; const rate = rate0 * (1 - .25 * prog) * rnd(.85, 1.15); const period = 1 / rate;
+      const res = res0 * (1 + (p.slide - 1) * prog) * rnd(.93, 1.07); const amp = env(t) * rnd(.6, 1);
+      const i0 = Math.floor(t * sr), len = Math.floor(period * sr * 1.3);
+      for (let i = 0; i < len && i0 + i < n; i++) { const s = i / sr; d[i0 + i] += amp * Math.sin(2 * Math.PI * res * s) * Math.exp(-s * p.decay * 5); }
+      t += period;
+    }
+    let lp = 0, lp2 = 0;
+    for (let i = 0; i < n; i++) {
+      const tt = i / sr, e = env(tt);
+      const rum = p.rumble * e * Math.sin(2 * Math.PI * (62 + 6 * Math.sin(tt * 7)) * tt);
+      const nz = Math.random() * 2 - 1; lp += (nz - lp) * .08; lp2 += (lp - lp2) * .08;
+      let v = d[i] + rum + p.breath * e * lp2 * 3;
+      d[i] = Math.tanh(v * 1.6) * .8 * p.vol;
+    }
+    const b = c.createBuffer(1, n, sr); b.getChannelData(0).set(d); return b;
+  }
   function fart(kind) {
     if (!enabled) return; const c = audio(); if (!c) return;
-    const p = FARTS[kind] || FARTS.normal; const t0 = c.currentTime + .01;
+    const p = FARTS[kind] || FARTS.normal;
     const play = t => {
-      const master = c.createGain(); master.gain.value = 0; master.connect(c.destination);
-      const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900; lp.Q.value = 2; lp.connect(master);
-      const osc = c.createOscillator(); osc.type = "sawtooth"; osc.frequency.setValueAtTime(p.f, t); osc.frequency.exponentialRampToValueAtTime(p.f * p.slide, t + p.dur);
-      const trem = c.createGain(); trem.gain.value = .5; osc.connect(trem); trem.connect(lp);
-      const lfo = c.createOscillator(); lfo.type = "square"; lfo.frequency.setValueAtTime(p.lfo, t); lfo.frequency.linearRampToValueAtTime(p.lfo * .7, t + p.dur);
-      const lfoG = c.createGain(); lfoG.gain.value = .5; lfo.connect(lfoG); lfoG.connect(trem.gain);
-      const n = c.createBufferSource(); n.buffer = noiseBuf(c, p.dur + .1); const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 420; bp.Q.value = .8;
-      const nG = c.createGain(); nG.gain.value = p.noise; n.connect(bp); bp.connect(nG); nG.connect(lp);
-      master.gain.setValueAtTime(0, t); master.gain.linearRampToValueAtTime(p.vol, t + .03); master.gain.setValueAtTime(p.vol, t + p.dur * .7); master.gain.exponentialRampToValueAtTime(.001, t + p.dur);
-      osc.start(t); lfo.start(t); n.start(t); osc.stop(t + p.dur + .05); lfo.stop(t + p.dur + .05); n.stop(t + p.dur + .05);
+      const src = c.createBufferSource(); src.buffer = fartBuffer(c, p);
+      const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 650; lp.Q.value = 1.2;
+      const g = c.createGain(); g.gain.value = .9;
+      src.connect(lp); lp.connect(g); g.connect(c.destination); src.start(t);
     };
-    play(t0); if (p.twice) play(t0 + p.dur + .12);
+    play(c.currentTime + .01); if (p.twice) play(c.currentTime + .01 + p.dur + .1);
   }
   function tone(freq, dur, type, vol, t) {
     const c = audio(); if (!c) return; t = t || c.currentTime;
