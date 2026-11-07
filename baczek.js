@@ -20,6 +20,7 @@
   function opened(stats) { const out = []; for (const o of OUTFITS) { if (o.test(stats)) out.push(o.id); else break; } return out; }
 
   // ---------- звуки ----------
+  const pick = a => a[Math.floor(Math.random() * a.length)];
   let ctx = null, enabled = true;
   function audio() {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
@@ -59,7 +60,7 @@
     }
     const b = c.createBuffer(1, n, sr); b.getChannelData(0).set(d); return b;
   }
-  function fart(kind) {
+  function fartSynth(kind) {
     if (!enabled) return; const c = audio(); if (!c) return;
     const p = FARTS[kind] || FARTS.normal;
     const play = t => {
@@ -69,6 +70,32 @@
       src.connect(lp); lp.connect(g); g.connect(c.destination); src.start(t);
     };
     play(c.currentTime + .01); if (p.twice) play(c.currentTime + .01 + p.dur + .1);
+  }
+  // Настоящие записи: snd/fNN.mp3 (Yle Arkisto, Freesound 425594, CC BY 3.0). Синтез — запасной вариант, если файлы не загрузились.
+  const SND = { small: ["f39", "f54", "f18", "f24"], normal: ["f23", "f04", "f53", "f01", "f09"], big: ["f58", "f20", "f50", "f16"], long: ["f31", "f45", "f36"], squeak: ["f44", "f10", "f34"], double: ["f39", "f54", "f18"],
+    // голос: хрюканье (Mudchute City Farm, CC BY-SA 3.0; Erdie, CC BY 3.0) и визг (морская свинка, public domain)
+    oink: ["oink1", "oink2", "oink3"], grunt: ["grunt"], squeal: ["gp_happy_0", "gp_happy_1", "gp_wheek_0", "gp_wheek_1", "gp_chirp_0"] };
+  const bufs = {};
+  async function loadSnd(n) {
+    if (bufs[n] !== undefined) return bufs[n]; bufs[n] = null;
+    try { const c = audio(); const r = await fetch("snd/" + n + ".mp3"); if (!r.ok) throw 0; bufs[n] = await c.decodeAudioData(await r.arrayBuffer()); } catch (e) { bufs[n] = null; }
+    return bufs[n];
+  }
+  function preloadSounds() { Object.values(SND).flat().forEach(loadSnd); }
+  function fart(kind) {
+    if (!enabled) return; const c = audio(); if (!c) return;
+    const names = SND[kind] || SND.normal; const n = pick(names);
+    const playBuf = (b, t) => { const s = c.createBufferSource(); s.buffer = b; const g = c.createGain(); g.gain.value = .9; s.connect(g); g.connect(c.destination); s.start(t); };
+    loadSnd(n).then(b => {
+      if (!b) return fartSynth(kind);
+      playBuf(b, c.currentTime + .01);
+      if (kind === "double") loadSnd(pick(names)).then(b2 => b2 && playBuf(b2, c.currentTime + b.duration + .08));
+    });
+  }
+  // Голос: хрюканье и визг (файлы; без них — тишина).
+  function voice(kind, vol) {
+    if (!enabled) return; const c = audio(); if (!c) return; const n = pick(SND[kind] || SND.oink);
+    loadSnd(n).then(b => { if (!b) return; const s = c.createBufferSource(); s.buffer = b; const g = c.createGain(); g.gain.value = vol || .7; s.connect(g); g.connect(c.destination); s.start(c.currentTime + .01); });
   }
   function tone(freq, dur, type, vol, t) {
     const c = audio(); if (!c) return; t = t || c.currentTime;
@@ -81,8 +108,6 @@
     tap() { if (!enabled) return; tone(520, .05, "triangle", .06); },
     star() { if (!enabled) return; const c = audio(); if (!c) return; [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, "sine", .1, c.currentTime + i * .08)); }
   };
-  const pick = a => a[Math.floor(Math.random() * a.length)];
-
   // ---------- персонаж на странице ----------
   // mount(el): создаёт стопку кадров и обёртку движения. Реакции: play(el, name, fartKey).
   function mount(el, first) {
@@ -106,16 +131,16 @@
         stop(); const may = key && key !== lastKey; if (key) lastKey = key; const base = api.base;
         const F = may ? fart : () => {};
         const R = {
-          wave() { show("wave"); anim(["rock"]); later(1600, () => show(base)); },
-          happy() { show("happy1"); later(160, () => { show("happy2"); anim(["jump", may ? "cloud-m" : ""].filter(Boolean)); if (may) fart(pick(["normal", "double", "squeak"])); else sfx.ok(); }); later(760, () => show("happy3")); later(1500, () => show(base)); },
+          wave() { show("wave"); anim(["rock"]); voice("oink", .6); later(1600, () => show(base)); },
+          happy() { show("happy1"); voice("squeal", .6); later(160, () => { show("happy2"); anim(["jump", may ? "cloud-m" : ""].filter(Boolean)); if (may) fart(pick(["normal", "double", "squeak"])); else sfx.ok(); }); later(760, () => show("happy3")); later(1500, () => show(base)); },
           oops() { show("oops"); anim(["rock", may ? "cloud-s" : ""].filter(Boolean)); F("small"); later(500, () => show("oops2")); later(1000, () => show("oops")); later(1500, () => show("oops2")); later(2600, () => show(base)); },
-          proud() { show("proud0"); anim([]); later(600, () => { show("proud"); anim(["puff", may ? (Math.random() < .5 ? "cloud-l" : "cloud-x") : ""].filter(Boolean)); if (may) fart(pick(["big", "long"])); else sfx.star(); }); later(3400, () => show(base)); },
-          wow() { show("wow0"); later(140, () => { show("wow"); anim(["pop", may ? "cloud-x" : ""].filter(Boolean)); F("squeak"); }); later(2400, () => show(base)); },
+          proud() { show("proud0"); anim([]); voice("grunt", .7); later(600, () => { show("proud"); anim(["puff", may ? (Math.random() < .5 ? "cloud-l" : "cloud-x") : ""].filter(Boolean)); if (may) fart(pick(["big", "long"])); else sfx.star(); }); later(3400, () => show(base)); },
+          wow() { show("wow0"); voice("squeal", .5); later(140, () => { show("wow"); anim(["pop", may ? "cloud-x" : ""].filter(Boolean)); F("squeak"); }); later(2400, () => show(base)); },
           suspicious() { show("suspicious"); anim(["nod"]); },
           angry() { show("angry1"); anim(["nod"]); later(1200, () => { show("angry2"); anim(["shake"]); }); later(1700, () => show("angry1")); later(2300, () => { show("angry2"); anim(["shake"]); }); later(2800, () => { show("angry1"); anim(["nod"]); }); },
           sleep() { show("sleep"); anim([]); later(1400, () => { show("sleep2"); anim(["sleepy", "nod"]); }); },
           book() { show("book"); anim(["nod"]); },
-          smile() { show("happy3"); anim([]); later(1800, () => show(base)); }
+          smile() { show("happy3"); anim([]); voice("oink", .4); later(1800, () => show(base)); }
         };
         (R[name] || R.wave)();
       },
@@ -127,8 +152,8 @@
   }
 
   window.BACZEK = {
-    FRAMES, OUTFITS, outfit, opened, preload, mount, fart, sfx,
-    setSound(on) { enabled = !!on; if (on) audio(); },
+    FRAMES, OUTFITS, outfit, opened, preload, mount, fart, voice, sfx,
+    setSound(on) { enabled = !!on; if (on) { audio(); preloadSounds(); } },
     soundOn: () => enabled,
     scale: stats => 0.85 + Math.min(0.3, (stats.stars || 0) / 1000)
   };
