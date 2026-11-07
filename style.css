@@ -150,7 +150,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .schulte button.hit { background: color-mix(in srgb, var(--ok) 22%, var(--surface)); border-color: var(--ok); color: var(--muted); }
 .schulte button.miss { background: color-mix(in srgb, var(--bad) 20%, var(--surface)); border-color: var(--bad); }
 .schulte button.red { color: var(--bad); }
-.schulte::after { content: ""; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px; border-radius: 50%; border: 2.5px solid var(--accent); pointer-events: none; opacity: .55; }
+.schulte::after { content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: var(--muted); pointer-events: none; opacity: .35; }
 .timer { font-family: var(--display); font-size: 28px; font-variant-numeric: tabular-nums; }
 
 /* чтение */
