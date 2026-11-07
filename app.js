@@ -537,7 +537,11 @@
   $("themeBtn").addEventListener("click", () => { const curT = document.documentElement.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); store.set("dzik-theme", curT === "dark" ? "light" : "dark"); applyTheme(); });
   $("soundBtn").addEventListener("click", () => { store.set("dzik-sound", !B.soundOn()); applySound(); if (B.soundOn()) B.sfx.ok(); });
 
+  // После входа через Google Supabase оставляет в адресе пустой «#» — убираем.
+  const cleanUrl = () => { if (location.hash === "" || location.hash === "#" || /^#(access_token|error)/.test(location.hash)) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} } };
+  if (location.href.endsWith("#")) cleanUrl();
   async function onUser(u) {
+    cleanUrl();
     user = u; role = null; nick = null; studentEmail = null;
     if (DEMO) { user = { email: "demo@local" }; role = "student"; nick = "Demo"; studentEmail = "demo@local"; }
     else if (user) {
@@ -562,6 +566,6 @@
   if (DEMO) onUser(null);
   else if (sb) {
     sb.auth.getSession().then(({ data }) => onUser(data.session ? data.session.user : null));
-    sb.auth.onAuthStateChange((ev, session) => { if (ev === "SIGNED_IN" && (!user || user.id !== session.user.id)) onUser(session.user); });
+    sb.auth.onAuthStateChange((ev, session) => { cleanUrl(); if (ev === "SIGNED_IN" && (!user || user.id !== session.user.id)) onUser(session.user); });
   } else gate("Brak konfiguracji.", "");
 })();

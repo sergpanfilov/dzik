@@ -16,7 +16,11 @@
     $("logoutBtn").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
   }
 
+  // После входа через Google Supabase оставляет в адресе пустой «#» — убираем.
+  const cleanUrl = () => { if (location.hash === "" || location.hash === "#" || /^#(access_token|error)/.test(location.hash)) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} } };
+  if (location.href.endsWith("#")) cleanUrl();
   async function start() {
+    cleanUrl(); if (sb) sb.auth.onAuthStateChange(() => cleanUrl());
     let S, settings;
     if (DEMO) { const d = JSON.parse(localStorage.getItem("dzik-demo") || "{}"); S = d.sessions || []; settings = d.settings || {}; studentEmail = "demo@local"; }
     else {
