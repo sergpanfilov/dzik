@@ -308,3 +308,7 @@ tr.open { cursor: pointer; } tr.open:hover td { background: var(--bg); }
 .rows div { display: flex; justify-content: space-between; gap: 12px; background: var(--bg); border-radius: 12px; padding: 8px 14px; font-weight: 700; }
 .rows b { font-family: var(--display); font-weight: 600; }
 .who { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+
+/* выход на главную belhome.cc (09–10.11.2026, просьба Сержа) */
+.home-link { display: inline-block; margin: 0 0 6px; font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: none; }
+.home-link:hover { text-decoration: underline; }
