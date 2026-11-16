@@ -135,13 +135,27 @@
   function applyTheme() { const t = store.get("dzik-theme", null); if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); const dark = (t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark"; $("themeBtn").innerHTML = dark ? ICON.moon : ICON.sun; }
   function applySound() { const on = store.get("dzik-sound", settings.sound_on !== false); B.setSound(on); $("soundBtn").innerHTML = on ? ICON.sound : ICON.mute; $("soundBtn").classList.toggle("off", !on); $("soundBtn").setAttribute("aria-pressed", on); }
 
+  // ---------- тайная болтовня (talk.js): фразы открываются по звёздам, свежие звучат чаще ----------
+  let lastTalk = null;
+  function talk(kind, chance) {
+    if (Math.random() > (chance == null ? 1 : chance)) return null;
+    const stars = totalStars(); const tiers = (window.DZIK_TALK || []).filter(t => stars >= t.stars && t[kind] && t[kind].length);
+    if (!tiers.length) return null;
+    const pool = Math.random() < .5 ? tiers[tiers.length - 1][kind] : tiers.flatMap(t => t[kind]);
+    let line = pool[Math.floor(Math.random() * pool.length)];
+    if (line === lastTalk && pool.length > 1) line = pool.find(x => x !== lastTalk);
+    lastTalk = line;
+    return nick ? line.replace("{n}", nick) : line.replace(/,? ?\{n\}/, "");
+  }
+
   // ---------- ДОМ ----------
   function greeting() {
     const away = daysSince(); const h = new Date().getHours();
     if (away !== null && away >= 3) return { r: "angry", t: `${away} dni bez czytania?! Czekałem i czekałem.`, s: "Ale już jesteś. Chodź, poczytamy." };
     if (cur && !cur.done) return { r: "wave", t: "Mamy zaczętą sesję. Dokończymy?", s: "Zacząłem czekać na tym samym miejscu." };
     if (cur && cur.done) { const n = todays().filter(s => s.done).length; return { r: "wave", t: n > 1 ? `Już ${n} historie dzisiaj. Jestem dumny!` : "Dzisiejsza historia przeczytana. Jestem dumny!", s: "Chcesz jeszcze jedną? Bączek chętnie posłucha." }; }
-    const st = streak().n;
+    const st = streak().n; const chat = talk("hello", .6);
+    if (chat) return { r: "wave", t: chat, s: st >= 3 ? `Już ${st} dni z rzędu. Dziś czeka nowa historia.` : "Jedna sesja to około 12 minut." };
     if (st >= 3) return { r: "wave", t: `Cześć${nick ? ", " + nick : ""}! Już ${st} dni z rzędu.`, s: "Dziś czeka nowa historia." };
     return { r: "wave", t: h < 12 ? "Dzień dobry! Co dziś czytamy?" : "Cześć! Co dziś czytamy?", s: "Jedna sesja to około 12 minut." };
   }
@@ -308,7 +322,7 @@
       stage.querySelectorAll(".opt").forEach(x => { x.disabled = true; if (x.dataset.k === "0") x.classList.add("right"); });
       if (!ok) b.classList.add("wrong");
       q.answers.push({ i, type: Q.type, ok, peek: peeked, chosen: +b.dataset.k });
-      if (ok) { pig.play("happy", "quiz"); say(peeked ? "Dobrze, choć z podglądem." : ["Dobrze!", "Tak jest!", "Brawo!", "Świetnie!"][i % 4]); }
+      if (ok) { pig.play("happy", "quiz"); say(peeked ? "Dobrze, choć z podglądem." : talk("right", .4) || ["Dobrze!", "Tak jest!", "Brawo!", "Świetnie!"][i % 4]); }
       else { pig.play("oops", "quiz"); say("Nie tym razem. Prawidłowa odpowiedź jest podświetlona.", "Spróbuj zapamiętać."); }
       $("peek").hidden = true; $("peekBtn").hidden = true; $("nextBtn").hidden = false;
     }));
@@ -491,7 +505,7 @@
     const fact = FACTS[(doneDaily().length + t.id.length) % FACTS.length];
     const r = sc.stars >= 8 ? "proud" : sc.stars >= 5 ? "happy" : "smile";
     pig.wear(worn(after)); pig.play(r, "done");
-    say(sc.stars >= 8 ? "To był świetny trening!" : sc.stars >= 5 ? "Dobra robota!" : "Każdy dzień czytania się liczy.", newAcc.length ? `Bączek ma nowe: ${newAcc.map(a => a.name).join(", ")}!` : "");
+    say(sc.stars >= 8 ? "To był świetny trening!" : sc.stars >= 5 ? "Dobra robota!" : "Każdy dzień czytania się liczy.", newAcc.length ? `Bączek ma nowe: ${newAcc.map(a => a.name).join(", ")}!` : talk("done", .7) || "");
     const s = cur.state; const q = s.quiz ? s.quiz.answers : []; const qOk = q.filter(x => x.ok).length;
     const rows = [
       ["Pytania", `${qOk} z ${q.length}`], s.marks ? ["Znaki", `${s.marks.ok} z ${s.marks.total}`] : null, s.comma ? ["Przecinek", `${s.comma.ok} z ${s.comma.total || s.comma.done.length}`] : null,
@@ -597,7 +611,10 @@
   // стартовая обложка: закрывается кнопкой START (это же нажатие разрешает звук)
   $("splashStart").addEventListener("click", () => { $("splash").hidden = true; B.setSound(store.get("dzik-sound", settings.sound_on !== false)); });
   if (/nosplash/.test(location.search)) $("splash").hidden = true;
-  pig = B.mount($("boarBox"), "idle"); B.preload(["wave", "happy1", "happy2", "happy3", "oops", "oops2", "proud0", "proud", "wow0", "wow", "suspicious", "book", "angry1", "angry2"]);
+  pig = B.mount($("boarBox"), "idle");
+  // нажатие на Bączka на главной — он что-нибудь говорит (не объявляется)
+  let tapAt = 0;
+  $("boarBox").addEventListener("click", () => { if (!stage.querySelector(".hero") || Date.now() - tapAt < 1200) return; tapAt = Date.now(); const line = talk("tap"); if (line) { pig.play("smile"); say(line); } }); B.preload(["wave", "happy1", "happy2", "happy3", "oops", "oops2", "proud0", "proud", "wow0", "wow", "suspicious", "book", "angry1", "angry2"]);
   applyFont(); applyTheme(); applySound(); renderAuth();
   if (DEMO) onUser(null);
   else if (sb) {
