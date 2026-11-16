@@ -214,14 +214,14 @@
   function goStep(step) {
     clearInterval(readTimer); clearInterval(leadTimer); clearInterval(schulteTimer);
     pig.base = "idle"; pig.idle();
-    const fn = { pick, schulte, read, quiz, lead, marks, comma, order, flash, done: finish }[step];
+    const fn = { pick, schulte, read, quiz, lead, marks, comma, order, flash, done: finish, freedone: finishFree }[step];
     if (fn) fn(); else home();
   }
   const text = () => textById(cur.text_id);
   const isFree = () => cur.mode === "free";
   // следующий шаг в ежедневной сессии; в свободной тренировке — только выбранный модуль
   function next(after) {
-    if (isFree()) return finishFree();
+    if (isFree()) return "freedone";
     const chain = ["pick", "schulte", "read", "quiz", "lead", "marks", "comma", "order", flashOn() ? "flash" : null, "done"].filter(Boolean);
     return chain[chain.indexOf(after) + 1];
   }
@@ -517,11 +517,14 @@
     const byLevel = {}; TEXTS.forEach(t => (byLevel[t.level] = byLevel[t.level] || []).push(t));
     render(`<section class="card"><h2>Dodatkowe ćwiczenia</h2>
       <div class="row"><button class="ghost" data-m="schulte">Rozgrzewka</button><button class="ghost" data-m="read">Czytanie i pytania</button><button class="ghost" data-m="lead">Czytanie na głos</button><button class="ghost" data-m="marks">Znaki</button><button class="ghost" data-m="comma">Przecinek</button><button class="ghost" data-m="order">Kolejność</button><button class="ghost" data-m="flash">Błysk słów</button></div>
-      <h3>Historia</h3>${Object.keys(byLevel).map(l => `<p class="muted small">Poziom ${l}${+l > lvl + 1 ? " · trudniejsze" : ""}</p><div class="stories">${byLevel[l].map(t => `<button class="story ${t.id === sel ? "next" : ""}" data-t="${t.id}"><span class="t">${esc(t.title)}</span><span class="st">${words(t.body).length} słów</span></button>`).join("")}</div>`).join("")}
+      <p class="pill info" id="pickHint" hidden>Teraz wybierz historię ↓</p>
+      <h3 id="histH">Historia</h3>${Object.keys(byLevel).map(l => `<p class="muted small">Poziom ${l}${+l > lvl + 1 ? " · trudniejsze" : ""}</p><div class="stories">${byLevel[l].map(t => `<button class="story ${t.id === sel ? "next" : ""}" data-t="${t.id}"><span class="t">${esc(t.title)}</span><span class="st">${words(t.body).length} słów</span></button>`).join("")}</div>`).join("")}
       <div class="btns"><button class="ghost" id="backBtn">← Do domu</button></div></section>`);
     let mod = "read";
     const mark = () => { stage.querySelectorAll("[data-m]").forEach(b => b.style.borderColor = b.dataset.m === mod ? "var(--accent)" : ""); stage.querySelectorAll("[data-t]").forEach(b => b.style.borderColor = b.dataset.t === sel ? "var(--accent)" : ""); };
-    stage.querySelectorAll("[data-m]").forEach(b => b.addEventListener("click", () => { mod = b.dataset.m; mark(); if (mod === "schulte" || mod === "comma" || mod === "flash" || sel) startFree(mod, sel); }));
+    stage.querySelectorAll("[data-m]").forEach(b => b.addEventListener("click", () => { mod = b.dataset.m; mark(); if (mod === "schulte" || mod === "comma" || mod === "flash" || sel) return startFree(mod, sel);
+      // этим упражнениям нужен текст: подсказываем выбрать историю и прокручиваем к списку
+      B.sfx.tap(); $("pickHint").hidden = false; say("Dobrze! Teraz wybierz historię.", "Lista historii jest niżej."); $("histH").scrollIntoView({ behavior: "smooth", block: "start" }); }));
     stage.querySelectorAll("[data-t]").forEach(b => b.addEventListener("click", () => { sel = b.dataset.t; mark(); startFree(mod, sel); }));
     $("backBtn").addEventListener("click", home); mark();
   }
@@ -532,15 +535,15 @@
     goStep(mod === "read" ? "read" : mod);
   }
   async function finishFree() {
-    const s = cur.state; if (cur.step === "read" && !s.quiz) { return goStep("quiz"); }
+    const s = cur.state; if (s.module === "read" && !s.quiz) { return setStep("quiz"); }
     cur.done = true; cur.comp = s.quiz ? s.quiz.pct : null; cur.wpm = s.read ? s.read.wpm : null; cur.too_fast = !!(s.read && s.read.tooFast);
     cur.punct = s.marks ? pct(s.marks.ok, s.marks.total) : (s.comma ? pct(s.comma.ok, s.comma.total || 1) : null); cur.ord = s.order ? s.order.score : null; cur.seconds = s.read ? s.read.sec : null;
     await db.save(cur); cur = dailyBackup; pig.play("happy", "free"); say("Dodatkowe ćwiczenie zrobione.", "Wracamy do domu.");
     render(`<section class="card res"><h2>Gotowe!</h2><p class="muted">Brawo za dodatkową pracę.</p><div class="btns"><button class="go" id="homeBtn">Do domu</button><button class="ghost" id="againBtn">Jeszcze jedno ćwiczenie</button></div><p class="saved"></p></section>`);
     $("homeBtn").addEventListener("click", home); $("againBtn").addEventListener("click", () => freeMenu());
   }
-  // В свободной тренировке next() → finishFree; но «Czytanie i pytania» идёт read → quiz → конец.
-  const _next = next;
+  // В свободной тренировке next() даёт шаг "freedone" → finishFree (после сохранения результата модуля);
+  // «Czytanie i pytania» идёт read → quiz → конец.
 
   // ---------- конфетти ----------
   function confetti() {
