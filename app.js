@@ -136,17 +136,44 @@
   function applySound() { const on = store.get("dzik-sound", settings.sound_on !== false); B.setSound(on); $("soundBtn").innerHTML = on ? ICON.sound : ICON.mute; $("soundBtn").classList.toggle("off", !on); $("soundBtn").setAttribute("aria-pressed", on); }
 
   // ---------- тайная болтовня (talk.js): фразы открываются по звёздам, свежие звучат чаще ----------
+  // talk() возвращает текст для облачка; исходная реплика остаётся в lastTalk, по ней speak() находит озвучку.
   let lastTalk = null;
+  const MORE = window.DZIK_TALK_MORE || {};
+  const fmt = line => nick ? line.replace("{n}", nick) : line.replace(/,? ?\{n\}/, "");
+  function pickLine(pool) {
+    if (!pool || !pool.length) return null;
+    let line = pool[Math.floor(Math.random() * pool.length)];
+    if (line === lastTalk && pool.length > 1) line = pool.find(x => x !== lastTalk);
+    lastTalk = line; return fmt(line);
+  }
   function talk(kind, chance) {
     if (Math.random() > (chance == null ? 1 : chance)) return null;
     const stars = totalStars(); const tiers = (window.DZIK_TALK || []).filter(t => stars >= t.stars && t[kind] && t[kind].length);
     if (!tiers.length) return null;
-    const pool = Math.random() < .5 ? tiers[tiers.length - 1][kind] : tiers.flatMap(t => t[kind]);
-    let line = pool[Math.floor(Math.random() * pool.length)];
-    if (line === lastTalk && pool.length > 1) line = pool.find(x => x !== lastTalk);
-    lastTalk = line;
-    return nick ? line.replace("{n}", nick) : line.replace(/,? ?\{n\}/, "");
+    return pickLine(Math.random() < .5 ? tiers[tiers.length - 1][kind] : tiers.flatMap(t => t[kind]));
   }
+  // произнести последнюю выбранную реплику вслух (если она озвучена)
+  function speak() { const a = lastTalk && (window.DZIK_TALK_AUDIO || {})[lastTalk]; if (a) B.speak(a.f, a.oink); }
+  // ступень болтовни, перейдённая между двумя суммами звёзд
+  const tierCrossed = (a, b) => (window.DZIK_TALK || []).some(t => t.stars > 0 && a < t.stars && b >= t.stars);
+
+  // ---------- потеря темпа: долго без нажатий (кроме чтения и чтения на голос) или чтение затянулось ----------
+  const SLOW_FACE = { dad: "wave", bored: "sleep", angry: "angry", stranger: "suspicious" };
+  let shownStep = null, lastAct = Date.now(), nudges = 0, readWatch = null;
+  ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { lastAct = Date.now(); }, true));
+  document.addEventListener("visibilitychange", () => { lastAct = Date.now(); });
+  function nudge() {
+    const moods = Object.keys(MORE.slow || {}); if (!moods.length) return;
+    const mood = moods[Math.floor(Math.random() * moods.length)]; const t = pickLine(MORE.slow[mood]); if (!t) return;
+    nudges++; lastAct = Date.now(); pig.play(SLOW_FACE[mood]); say(t); speak();
+    setTimeout(() => { if (pig) pig.idle(); }, 4500);
+  }
+  setInterval(() => {
+    if (document.hidden || !shownStep || nudges >= 3) return;
+    if (shownStep === "read") { if (readWatch && !readWatch.fired && Date.now() - readWatch.t0 > readWatch.limit) { readWatch.fired = true; nudge(); } return; }
+    if (shownStep === "lead") return;
+    if (Date.now() - lastAct > 40000) nudge();
+  }, 5000);
 
   // ---------- ДОМ ----------
   function greeting() {
@@ -155,14 +182,14 @@
     if (cur && !cur.done) return { r: "wave", t: "Mamy zaczętą sesję. Dokończymy?", s: "Zacząłem czekać na tym samym miejscu." };
     if (cur && cur.done) { const n = todays().filter(s => s.done).length; return { r: "wave", t: n > 1 ? `Już ${n} historie dzisiaj. Jestem dumny!` : "Dzisiejsza historia przeczytana. Jestem dumny!", s: "Chcesz jeszcze jedną? Bączek chętnie posłucha." }; }
     const st = streak().n; const chat = talk("hello", .6);
-    if (chat) return { r: "wave", t: chat, s: st >= 3 ? `Już ${st} dni z rzędu. Dziś czeka nowa historia.` : "Jedna sesja to około 12 minut." };
+    if (chat) return { r: "wave", t: chat, speak: true, s: st >= 3 ? `Już ${st} dni z rzędu. Dziś czeka nowa historia.` : "Jedna sesja to około 12 minut." };
     if (st >= 3) return { r: "wave", t: `Cześć${nick ? ", " + nick : ""}! Już ${st} dni z rzędu.`, s: "Dziś czeka nowa historia." };
     return { r: "wave", t: h < 12 ? "Dzień dobry! Co dziś czytamy?" : "Cześć! Co dziś czytamy?", s: "Jedna sesja to około 12 minut." };
   }
   function home() {
     const st = stats(); const sk = streak();
     const todayDone = cur && cur.done, started = cur && !cur.done && cur.step && cur.step !== "pick";
-    pig.base = "idle"; pig.wear(worn(st)); const g = greeting(); pig.play(g.r, null); say(g.t, g.s);
+    pig.base = "idle"; pig.wear(worn(st)); const g = greeting(); pig.play(g.r, null); say(g.t, g.s); if (g.speak) speak(); shownStep = null;
     const days = []; for (let i = 13; i >= 0; i--) { const k = addDays(todayKey(), -i); const on = doneDaily().some(s => dk(s) === k); days.push(`<i class="${on ? "on" : sk.rests.includes(k) ? "rest" : ""} ${k === todayKey() ? "today" : ""}" title="${k}"></i>`); }
     const opened = B.opened(st);
     const need = o => { const n = +o.how.match(/(\d+)/)[1]; const byDays = /dni/.test(o.how); const left = Math.max(0, n - (byDays ? sk.n : st.stars)); return byDays ? (left === 1 ? "jeszcze 1 dzień z rzędu" : `jeszcze ${left} dni z rzędu`) : `jeszcze ${left} ★`; };
@@ -208,7 +235,8 @@
     store.set("dzik-off", [...new Set(off)]); B.sfx.tap();
     const w = worn(); pig.wear(w); pig.idle();
     const o = B.OUTFITS.find(x => x.id === id);
-    say(nowOn ? `Zdejmuję: ${o.name}.` : `Zakładam: ${o.name}!`, nowOn ? "Poleży w szafie." : "Jak wyglądam?");
+    const said = pickLine((nowOn ? MORE.wearOff : MORE.wearOn || {})[id]);
+    say(said || (nowOn ? `Zdejmuję: ${o.name}.` : `Zakładam: ${o.name}!`), nowOn ? "Poleży w szafie." : "Jak wyglądam?"); if (said) speak();
     stage.querySelectorAll("button.rew").forEach(b => { const on = w.includes(b.dataset.acc); b.classList.toggle("worn", on); b.classList.toggle("off", !on); b.setAttribute("aria-pressed", on); b.querySelector("span:last-child").textContent = on ? "ma na sobie" : "w szafie"; });
   }
 
@@ -227,7 +255,7 @@
   }
   function goStep(step) {
     clearInterval(readTimer); clearInterval(leadTimer); clearInterval(schulteTimer);
-    pig.base = "idle"; pig.idle();
+    pig.base = "idle"; pig.idle(); shownStep = step; lastAct = Date.now(); nudges = 0; readWatch = null;
     const fn = { pick, schulte, read, quiz, lead, marks, comma, order, flash, done: finish, freedone: finishFree }[step];
     if (fn) fn(); else home();
   }
@@ -285,7 +313,8 @@
     render(`<section class="card">${stepsBar("read")}<div class="text-head"><h2>${esc(t.title)}</h2><span class="muted small">${n} słów · poziom ${t.level}</span></div>
       <div class="reading blur" id="rd">${esc(t.body)}</div>
       <div class="btns"><button class="go" id="startBtn">Start</button><button class="go warm" id="doneBtn" hidden>Przeczytałam</button><span id="tm" hidden></span></div></section>`, true);
-    $("startBtn").addEventListener("click", () => { $("rd").classList.remove("blur"); $("startBtn").hidden = true; $("doneBtn").hidden = false; t0 = performance.now(); running = true; say("Czytam razem z tobą. Kiedy skończysz, naciśnij „Przeczytałam”.", "Nie spiesz się: liczy się to, co zapamiętasz."); });
+    $("startBtn").addEventListener("click", () => { $("rd").classList.remove("blur"); $("startBtn").hidden = true; $("doneBtn").hidden = false; t0 = performance.now(); running = true;
+      readWatch = { t0: Date.now(), limit: Math.max(60, 2.2 * n / (avgWpm() || 60) * 60) * 1000, fired: false }; say("Czytam razem z tobą. Kiedy skończysz, naciśnij „Przeczytałam”.", "Nie spiesz się: liczy się to, co zapamiętasz."); });
     $("doneBtn").addEventListener("click", () => {
       acc += performance.now() - t0; running = false; clearInterval(readTimer);
       const sec = Math.max(1, Math.round(acc / 1000)); const wpm = Math.round(n / (sec / 60));
@@ -322,7 +351,7 @@
       stage.querySelectorAll(".opt").forEach(x => { x.disabled = true; if (x.dataset.k === "0") x.classList.add("right"); });
       if (!ok) b.classList.add("wrong");
       q.answers.push({ i, type: Q.type, ok, peek: peeked, chosen: +b.dataset.k });
-      if (ok) { pig.play("happy", "quiz"); say(peeked ? "Dobrze, choć z podglądem." : talk("right", .4) || ["Dobrze!", "Tak jest!", "Brawo!", "Świetnie!"][i % 4]); }
+      if (ok) { pig.play("happy", "quiz"); const chat = peeked ? null : talk("right", .4); say(peeked ? "Dobrze, choć z podglądem." : chat || ["Dobrze!", "Tak jest!", "Brawo!", "Świetnie!"][i % 4]); if (chat) speak(); }
       else { pig.play("oops", "quiz"); say("Nie tym razem. Prawidłowa odpowiedź jest podświetlona.", "Spróbuj zapamiętać."); }
       $("peek").hidden = true; $("peekBtn").hidden = true; $("nextBtn").hidden = false;
     }));
@@ -505,7 +534,10 @@
     const fact = FACTS[(doneDaily().length + t.id.length) % FACTS.length];
     const r = sc.stars >= 8 ? "proud" : sc.stars >= 5 ? "happy" : "smile";
     pig.wear(worn(after)); pig.play(r, "done");
-    say(sc.stars >= 8 ? "To był świetny trening!" : sc.stars >= 5 ? "Dobra robota!" : "Każdy dzień czytania się liczy.", newAcc.length ? `Bączek ma nowe: ${newAcc.map(a => a.name).join(", ")}!` : talk("done", .7) || "");
+    // голос на итоге: новая ступень звёзд → новая вещь → обычная похвала
+    shownStep = null;
+    const line = !wasDone && tierCrossed(before.stars, after.stars) ? pickLine(MORE.tierUp) : newAcc.length && MORE.wearOn ? pickLine(MORE.wearOn[newAcc[0].id]) : talk("done");
+    say(sc.stars >= 8 ? "To był świetny trening!" : sc.stars >= 5 ? "Dobra robota!" : "Każdy dzień czytania się liczy.", line || ""); if (line) setTimeout(speak, 900);
     const s = cur.state; const q = s.quiz ? s.quiz.answers : []; const qOk = q.filter(x => x.ok).length;
     const rows = [
       ["Pytania", `${qOk} z ${q.length}`], s.marks ? ["Znaki", `${s.marks.ok} z ${s.marks.total}`] : null, s.comma ? ["Przecinek", `${s.comma.ok} z ${s.comma.total || s.comma.done.length}`] : null,
@@ -552,7 +584,7 @@
     const s = cur.state; if (s.module === "read" && !s.quiz) { return setStep("quiz"); }
     cur.done = true; cur.comp = s.quiz ? s.quiz.pct : null; cur.wpm = s.read ? s.read.wpm : null; cur.too_fast = !!(s.read && s.read.tooFast);
     cur.punct = s.marks ? pct(s.marks.ok, s.marks.total) : (s.comma ? pct(s.comma.ok, s.comma.total || 1) : null); cur.ord = s.order ? s.order.score : null; cur.seconds = s.read ? s.read.sec : null;
-    await db.save(cur); cur = dailyBackup; pig.play("happy", "free"); say("Dodatkowe ćwiczenie zrobione.", "Wracamy do domu.");
+    await db.save(cur); cur = dailyBackup; pig.play("happy", "free"); shownStep = null; say(pickLine(MORE.freeDone) || "Dodatkowe ćwiczenie zrobione.", "Wracamy do domu."); speak();
     render(`<section class="card res"><h2>Gotowe!</h2><p class="muted">Brawo za dodatkową pracę.</p><div class="btns"><button class="go" id="homeBtn">Do domu</button><button class="ghost" id="againBtn">Jeszcze jedno ćwiczenie</button></div><p class="saved"></p></section>`);
     $("homeBtn").addEventListener("click", home); $("againBtn").addEventListener("click", () => freeMenu());
   }
@@ -614,7 +646,7 @@
   pig = B.mount($("boarBox"), "idle");
   // нажатие на Bączka на главной — он что-нибудь говорит (не объявляется)
   let tapAt = 0;
-  $("boarBox").addEventListener("click", () => { if (!stage.querySelector(".hero") || Date.now() - tapAt < 1200) return; tapAt = Date.now(); const line = talk("tap"); if (line) { pig.play("smile"); say(line); } }); B.preload(["wave", "happy1", "happy2", "happy3", "oops", "oops2", "proud0", "proud", "wow0", "wow", "suspicious", "book", "angry1", "angry2"]);
+  $("boarBox").addEventListener("click", () => { if (!stage.querySelector(".hero") || Date.now() - tapAt < 1200) return; tapAt = Date.now(); const line = talk("tap"); if (line) { pig.play("smile"); say(line); speak(); } }); B.preload(["wave", "happy1", "happy2", "happy3", "oops", "oops2", "proud0", "proud", "wow0", "wow", "suspicious", "book", "angry1", "angry2"]);
   applyFont(); applyTheme(); applySound(); renderAuth();
   if (DEMO) onUser(null);
   else if (sb) {

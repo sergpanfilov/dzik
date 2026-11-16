@@ -101,6 +101,15 @@
     if (!enabled) return; const c = audio(); if (!c) return; const n = pick(SND[kind] || SND.oink);
     loadSnd(n).then(b => { if (!b) return; const s = c.createBufferSource(); s.buffer = b; const g = c.createGain(); g.gain.value = vol || .7; s.connect(g); g.connect(out()); s.start(c.currentTime + .01); });
   }
+  // Речь Bączka: озвученные реплики snd/talk/<f>.mp3 (scripts/talk_audio.py). Новая реплика обрывает предыдущую;
+  // если в реплике было «Chrum», сначала звучит настоящее хрюканье.
+  let speech = null, speechSeq = 0;
+  function speak(f, oink) {
+    if (!enabled || !f) return; const c = audio(); if (!c) return; const my = ++speechSeq;
+    if (speech) { try { speech.stop(); } catch (e) {} speech = null; }
+    const delay = oink ? .45 : .05; if (oink) voice("oink", .6);
+    loadSnd("talk/" + f).then(b => { if (!b || my !== speechSeq) return; const src = c.createBufferSource(); src.buffer = b; const g = c.createGain(); g.gain.value = 1.4; src.connect(g); g.connect(out()); src.start(c.currentTime + delay); speech = src; });
+  }
   function tone(freq, dur, type, vol, t) {
     const c = audio(); if (!c) return; t = t || c.currentTime;
     const o = c.createOscillator(); o.type = type || "sine"; o.frequency.value = freq;
@@ -159,7 +168,7 @@
   }
 
   window.BACZEK = {
-    FRAMES, OUTFITS, CLASH, opened, preload, mount, fart, voice, sfx,
+    FRAMES, OUTFITS, CLASH, opened, preload, mount, fart, voice, speak, sfx,
     setSound(on) { enabled = !!on; if (on) { audio(); preloadSounds(); } },
     soundOn: () => enabled,
     scale: stats => 0.85 + Math.min(0.3, (stats.stars || 0) / 1000)
