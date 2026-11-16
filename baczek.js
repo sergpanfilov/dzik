@@ -1,11 +1,12 @@
 // Dzik czyta — Bączek: кадры персонажа (img/baczek/*.webp), последовательности реакций, наряды, звуки (Web Audio).
 (() => {
-  const FRAMES = ["cloud1", "cloud2", "cloud3", "cloud4", "idle", "wave", "book", "happy1", "happy2", "happy3", "oops", "oops2", "proud0", "proud", "wow0", "wow", "suspicious", "sleep", "sleep2", "angry1", "angry2", "acc1", "acc2", "acc3", "acc4", "acc5", "acc6", "acc7"];
+  const FRAMES = ["cloud1", "cloud2", "cloud3", "cloud4", "idle", "wave", "book", "happy1", "happy2", "happy3", "oops", "oops2", "proud0", "proud", "wow0", "wow", "suspicious", "sleep", "sleep2", "angry1", "angry2"];
   const src = n => `img/baczek/${n}.webp`;
   const cache = {};
   function preload(names) { names.forEach(n => { if (!cache[n]) { const i = new Image(); i.src = src(n); cache[n] = i; } }); }
 
-  // Наряды: открываются по сумме звёзд и серии дней (накопительно: каждый следующий включает предыдущие).
+  // Одёжки: открываются по сумме звёзд и лучшей серии дней. Каждая — отдельный прозрачный слой поверх idle
+  // (img/baczek/wear/accN.webp, сделаны scripts/layers.py), поэтому их можно надевать и снимать по одной.
   const OUTFITS = [
     { id: "acc1", name: "szalik", how: "3 dni z rzędu", test: s => s.streak >= 3 },
     { id: "acc2", name: "okulary", how: "30 gwiazdek", test: s => s.stars >= 30 },
@@ -15,9 +16,10 @@
     { id: "acc6", name: "czapka", how: "14 dni z rzędu", test: s => s.streak >= 14 },
     { id: "acc7", name: "wianek mistrza", how: "300 gwiazdek", test: s => s.stars >= 300 }
   ];
-  // Лучший наряд: самый высокий уровень, до которого все условия подряд выполнены.
-  function outfit(stats) { let best = "idle"; for (const o of OUTFITS) { if (o.test(stats)) best = o.id; else break; } return best; }
-  function opened(stats) { const out = []; for (const o of OUTFITS) { if (o.test(stats)) out.push(o.id); else break; } return out; }
+  function opened(stats) { return OUTFITS.filter(o => o.test(stats)).map(o => o.id); }
+  // Порядок слоёв снизу вверх (рюкзак за спиной, бантик поверх шапки) и вещи, которые не носят вместе.
+  const WEAR_ORDER = ["acc4", "acc5", "acc1", "acc2", "acc6", "acc7", "acc3"];
+  const CLASH = { acc6: ["acc7"], acc7: ["acc6"] };   // шапка и венок — обе на макушке
 
   // ---------- звуки ----------
   const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -117,9 +119,10 @@
     el.innerHTML = `<img class="cloud" src="${src("cloud2")}" alt="" draggable="false"><div class="mv"></div><span class="zz" aria-hidden="true">Zzz</span>`;
     const cloudEl = el.querySelector(".cloud");
     const mv = el.querySelector(".mv"); const imgs = {};
+    const wearEl = document.createElement("div"); wearEl.className = "wear"; mv.appendChild(wearEl);
     const get = n => { if (!imgs[n]) { const i = document.createElement("img"); i.src = src(n); i.alt = ""; i.className = "fr"; i.draggable = false; mv.appendChild(i); imgs[n] = i; } return imgs[n]; };
     let cur = null, timers = [];
-    const show = n => { if (cur) imgs[cur].classList.remove("on"); get(n).classList.add("on"); cur = n; };
+    const show = n => { if (cur) imgs[cur].classList.remove("on"); get(n).classList.add("on"); cur = n; el.classList.toggle("dressed", n === "idle"); };
     const ANIMS = ["jump", "puff", "rock", "pop", "shake", "nod", "sleepy", "cloud-s", "cloud-m", "cloud-l", "cloud-x"];
     const CLOUD = { "cloud-s": "cloud1", "cloud-m": "cloud2", "cloud-l": "cloud3", "cloud-x": "cloud4" };
     const anim = cls => { el.classList.remove(...ANIMS); void el.offsetWidth; const c = cls.find(x => CLOUD[x]); if (c) cloudEl.src = src(CLOUD[c]); if (cls.length) el.classList.add(...cls); };
@@ -147,6 +150,8 @@
         (R[name] || R.wave)();
       },
       base: "idle",
+      // надеть список одёжек (слои видны только на спокойном кадре idle)
+      wear(ids) { wearEl.innerHTML = WEAR_ORDER.filter(id => ids.includes(id)).map(id => `<img src="img/baczek/wear/${id}.webp" alt="" draggable="false">`).join(""); },
       resetFart() { lastKey = null; }
     };
     show(first || "idle");
@@ -154,7 +159,7 @@
   }
 
   window.BACZEK = {
-    FRAMES, OUTFITS, outfit, opened, preload, mount, fart, voice, sfx,
+    FRAMES, OUTFITS, CLASH, opened, preload, mount, fart, voice, sfx,
     setSound(on) { enabled = !!on; if (on) { audio(); preloadSounds(); } },
     soundOn: () => enabled,
     scale: stats => 0.85 + Math.min(0.3, (stats.stars || 0) / 1000)

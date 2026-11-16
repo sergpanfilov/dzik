@@ -57,6 +57,9 @@
 
   // ---------- вычисления: уровень, серия, звёзды ----------
   const daily = () => sessions.filter(s => s.mode === "daily");
+  // За день может быть несколько историй: первая хранится с day = «2026-11-16», следующие — «2026-11-16/2», «/3»…
+  const dk = s => s.day.slice(0, 10);
+  const todays = () => daily().filter(s => dk(s) === todayKey());
   const doneDaily = () => daily().filter(s => s.done);
   const maxLevel = () => Math.max(...TEXTS.map(t => t.level));
   function levelNow() {
@@ -72,9 +75,9 @@
     return lvl;
   }
   // Серия дней: один пропуск в неделю не обнуляет («dzik odpoczywa»).
-  function streak() {
-    const days = new Set(doneDaily().map(s => s.day)); let k = todayKey(); let n = 0, rests = [];
-    if (!days.has(k)) k = addDays(k, -1);
+  function streak(from) {
+    const days = new Set(doneDaily().map(dk)); let k = from || todayKey(); let n = 0, rests = [];
+    if (!from && !days.has(k)) k = addDays(k, -1);
     while (true) {
       if (days.has(k)) { n++; k = addDays(k, -1); continue; }
       const recent = rests.filter(r => r > addDays(k, -7)).length;
@@ -84,8 +87,15 @@
     return { n, rests };
   }
   const totalStars = () => doneDaily().reduce((a, s) => a + (s.stars || 0), 0);
-  const stats = () => ({ stars: totalStars(), streak: streak().n });
-  const daysSince = () => { const d = doneDaily(); if (!d.length) return null; const last = d[d.length - 1].day; let n = 0, k = todayKey(); while (k > last && n < 60) { k = addDays(k, -1); n++; } return n; };
+  // Для одёжек — лучшая серия за всё время: заработанная вещь не пропадает, если серия прервалась.
+  const bestStreak = () => Math.max(0, ...[...new Set(doneDaily().map(dk))].map(d => streak(d).n));
+  const stats = () => ({ stars: totalStars(), streak: bestStreak() });
+  // Что сейчас надето: все открытые вещи, кроме снятых (список снятых хранится в этом браузере).
+  function worn(st) {
+    const off = store.get("dzik-off", []); const on = B.opened(st || stats()).filter(id => !off.includes(id));
+    return on.filter(id => !(B.CLASH[id] || []).some(c => on.includes(c) && c > id));
+  }
+  const daysSince = () => { const d = doneDaily(); if (!d.length) return null; const last = dk(d[d.length - 1]); let n = 0, k = todayKey(); while (k > last && n < 60) { k = addDays(k, -1); n++; } return n; };
   function avgWpm() { const xs = doneDaily().filter(s => s.wpm && !s.too_fast).slice(-10); return xs.length ? Math.round(xs.reduce((a, s) => a + s.wpm, 0) / xs.length) : null; }
   function medianWpm() { const xs = doneDaily().filter(s => s.wpm).map(s => s.wpm).sort((a, b) => a - b); return xs.length ? xs[Math.floor(xs.length / 2)] : null; }
 
@@ -130,7 +140,7 @@
     const away = daysSince(); const h = new Date().getHours();
     if (away !== null && away >= 3) return { r: "angry", t: `${away} dni bez czytania?! Czekałem i czekałem.`, s: "Ale już jesteś. Chodź, poczytamy." };
     if (cur && !cur.done) return { r: "wave", t: "Mamy zaczętą sesję. Dokończymy?", s: "Zacząłem czekać na tym samym miejscu." };
-    if (cur && cur.done) return { r: "book", t: "Dzisiejsza sesja zrobiona. Jestem dumny!", s: "Jutro nowa historia. Możesz jeszcze poćwiczyć w dodatkowych ćwiczeniach." };
+    if (cur && cur.done) { const n = todays().filter(s => s.done).length; return { r: "wave", t: n > 1 ? `Już ${n} historie dzisiaj. Jestem dumny!` : "Dzisiejsza historia przeczytana. Jestem dumny!", s: "Chcesz jeszcze jedną? Bączek chętnie posłucha." }; }
     const st = streak().n;
     if (st >= 3) return { r: "wave", t: `Cześć${nick ? ", " + nick : ""}! Już ${st} dni z rzędu.`, s: "Dziś czeka nowa historia." };
     return { r: "wave", t: h < 12 ? "Dzień dobry! Co dziś czytamy?" : "Cześć! Co dziś czytamy?", s: "Jedna sesja to około 12 minut." };
@@ -138,17 +148,20 @@
   function home() {
     const st = stats(); const sk = streak();
     const todayDone = cur && cur.done, started = cur && !cur.done && cur.step && cur.step !== "pick";
-    const outfit = B.outfit(st); pig.base = outfit; const g = greeting(); pig.play(g.r, null); say(g.t, g.s);
-    const days = []; for (let i = 13; i >= 0; i--) { const k = addDays(todayKey(), -i); const on = doneDaily().some(s => s.day === k); days.push(`<i class="${on ? "on" : sk.rests.includes(k) ? "rest" : ""} ${k === todayKey() ? "today" : ""}" title="${k}"></i>`); }
+    pig.base = "idle"; pig.wear(worn(st)); const g = greeting(); pig.play(g.r, null); say(g.t, g.s);
+    const days = []; for (let i = 13; i >= 0; i--) { const k = addDays(todayKey(), -i); const on = doneDaily().some(s => dk(s) === k); days.push(`<i class="${on ? "on" : sk.rests.includes(k) ? "rest" : ""} ${k === todayKey() ? "today" : ""}" title="${k}"></i>`); }
     const opened = B.opened(st);
-    const need = o => { const n = +o.how.match(/(\d+)/)[1]; const byDays = /dni/.test(o.how); const left = Math.max(0, n - (byDays ? sk.n : st.stars)); return byDays ? (left === 1 ? "jeszcze 1 dzień" : `jeszcze ${left} dni`) : `jeszcze ${left} ★`; };
-    const acc = B.OUTFITS.map(o => `<div class="rew ${opened.includes(o.id) ? "on" : "locked"}" data-acc="${o.id}"><span class="pic"><img src="img/baczek/${o.id}.webp" alt=""></span><b>${o.name}</b><span>${opened.includes(o.id) ? "masz!" : need(o)}</span></div>`).join("");
+    const need = o => { const n = +o.how.match(/(\d+)/)[1]; const byDays = /dni/.test(o.how); const left = Math.max(0, n - (byDays ? sk.n : st.stars)); return byDays ? (left === 1 ? "jeszcze 1 dzień z rzędu" : `jeszcze ${left} dni z rzędu`) : `jeszcze ${left} ★`; };
+    const wearing = worn(st);
+    const acc = B.OUTFITS.map(o => { const has = opened.includes(o.id), w = wearing.includes(o.id);
+      const inner = `<span class="pic"><img src="img/baczek/wear/${o.id}-t.webp" alt=""></span><b>${o.name}</b><span>${has ? (w ? "ma na sobie" : "w szafie") : need(o)}</span>`;
+      return has ? `<button class="rew on ${w ? "worn" : "off"}" data-acc="${o.id}" aria-pressed="${w}">${inner}</button>` : `<div class="rew locked" data-acc="${o.id}">${inner}</div>`; }).join("");
     const read = doneDaily().slice().reverse();
     const stories = read.length ? read.slice(0, 12).map(s => { const t = textById(s.text_id); return t ? `<button class="story" data-free="${t.id}"><span class="t">${esc(t.title)}</span><span class="st">poziom ${t.level} · <b>${"★".repeat(s.stars || 0)}</b> ${s.stars || 0}/10</span></button>` : ""; }).join("") : `<p class="muted small">Tu pojawią się przeczytane historie.</p>`;
     render(`
       <section class="card hero">
         <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-          <h2>${todayDone ? "Dziś już przeczytane!" : started ? "Dokończmy dzisiejszą historię" : "Dzisiejsza historia czeka"}</h2>
+          <h2>${todayDone ? "Dziś już przeczytane! Może jeszcze jedna?" : started ? "Dokończmy dzisiejszą historię" : "Dzisiejsza historia czeka"}</h2>
           <div class="stats-row">
             <div class="stat"><b class="star">★ ${st.stars}</b><span>moje gwiazdki</span></div>
             <div class="stat"><b>${sk.n}</b><span>${sk.n === 1 ? "dzień" : "dni"} czytania z rzędu</span></div>
@@ -156,11 +169,12 @@
           <div><p class="muted small" style="margin-bottom:4px">Moje dni czytania (ostatnie dwa tygodnie):</p><div class="trail" aria-label="Ostatnie 14 dni">${days.join("")}</div></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:stretch">
-          <button class="go" id="goBtn">${todayDone ? "Poćwicz jeszcze" : started ? "Czytamy dalej" : "Czytamy!"}</button>
+          <button class="go" id="goBtn">${todayDone ? "Jeszcze jedna historia!" : started ? "Czytamy dalej" : "Czytamy!"}</button>
+          ${todayDone ? `<button class="ghost" id="extraBtn">Dodatkowe ćwiczenia</button>` : ""}
         </div>
       </section>
       <section class="card">
-        <div class="sec-h"><h3>Rzeczy Bączka</h3><span class="muted small">za gwiazdki i dni czytania</span></div>
+        <div class="sec-h"><h3>Rzeczy Bączka</h3><span class="muted small">${opened.length ? "dotknij, żeby założyć albo zdjąć" : "za gwiazdki i dni czytania"}</span></div>
         <div class="rewards">${acc}</div>
       </section>
       <section class="card">
@@ -168,15 +182,27 @@
         <div class="stories">${stories}</div>
       </section>
       <p class="saved"></p>`);
-    $("goBtn").addEventListener("click", () => { if (todayDone) freeMenu(); else startDaily(); });
+    $("goBtn").addEventListener("click", startDaily);
+    if ($("extraBtn")) $("extraBtn").addEventListener("click", () => freeMenu());
     stage.querySelectorAll("[data-free]").forEach(b => b.addEventListener("click", () => freeMenu(b.dataset.free)));
+    stage.querySelectorAll("button.rew").forEach(b => b.addEventListener("click", () => toggleWear(b.dataset.acc)));
+  }
+  // надеть или снять одну вещь; шапку и венок вместе не носят — надетая вытесняет другую
+  function toggleWear(id) {
+    let off = store.get("dzik-off", []); const nowOn = worn().includes(id);
+    if (nowOn) off = off.concat(id); else { off = off.filter(x => x !== id).concat(B.CLASH[id] || []); }
+    store.set("dzik-off", [...new Set(off)]); B.sfx.tap();
+    const w = worn(); pig.wear(w); pig.idle();
+    const o = B.OUTFITS.find(x => x.id === id);
+    say(nowOn ? `Zdejmuję: ${o.name}.` : `Zakładam: ${o.name}!`, nowOn ? "Poleży w szafie." : "Jak wyglądam?");
+    stage.querySelectorAll("button.rew").forEach(b => { const on = w.includes(b.dataset.acc); b.classList.toggle("worn", on); b.classList.toggle("off", !on); b.setAttribute("aria-pressed", on); b.querySelector("span:last-child").textContent = on ? "ma na sobie" : "w szafie"; });
   }
 
   // ---------- СЕССИЯ ----------
   async function startDaily() {
     if (!cur || cur.done) {
-      if (cur && cur.done) return freeMenu();
-      cur = { day: todayKey(), mode: "daily", level: levelNow(), step: "pick", done: false, state: {} };
+      const n = todays().length;
+      cur = { day: n ? `${todayKey()}/${n + 1}` : todayKey(), mode: "daily", level: levelNow(), step: "pick", done: false, state: {} };
     }
     goStep(cur.step || "pick");
   }
@@ -203,7 +229,7 @@
   // выбор текста дня
   function pick() {
     const lvl = cur.level || levelNow(); const opts = candidates(lvl, cur.day);
-    say("Którą historię dziś czytamy?", "Wybierz jedną. Druga poczeka na inny dzień.");
+    say("Którą historię dziś czytamy?", "Wybierz jedną. Druga poczeka na później.");
     render(`<section class="card">${stepsBar("pick")}<h2>Poziom ${lvl}</h2><div class="choices">${opts.map(t => `<button class="choice" data-id="${t.id}"><span class="t">${esc(t.title)}</span><span class="m">${words(t.body).length} słów · ${esc(t.topic)}</span></button>`).join("")}</div></section>`, true);
     stage.querySelectorAll(".choice").forEach(b => b.addEventListener("click", () => { B.sfx.tap(); cur.text_id = b.dataset.id; cur.level = lvl; setStep(next("pick")); }));
   }
@@ -463,9 +489,8 @@
     if (!wasDone) { cur.done = true; cur.stars = sc.stars; cur.comp = sc.comp; cur.punct = sc.punct; cur.ord = sc.ord; cur.wpm = sc.wpm; cur.too_fast = sc.tooFast; cur.seconds = (cur.state.read && cur.state.read.sec) || 0; cur.state.score = sc; cur.step = "done"; await db.save(cur); }
     const after = stats(); const newAcc = B.OUTFITS.filter(o => !o.test(before) && o.test(after));
     const fact = FACTS[(doneDaily().length + t.id.length) % FACTS.length];
-    const tomorrow = candidates(levelNow(), addDays(todayKey(), 1)).filter(x => x.id !== t.id)[0];
     const r = sc.stars >= 8 ? "proud" : sc.stars >= 5 ? "happy" : "smile";
-    pig.base = B.outfit(after); pig.play(r, "done");
+    pig.wear(worn(after)); pig.play(r, "done");
     say(sc.stars >= 8 ? "To był świetny trening!" : sc.stars >= 5 ? "Dobra robota!" : "Każdy dzień czytania się liczy.", newAcc.length ? `Bączek ma nowe: ${newAcc.map(a => a.name).join(", ")}!` : "");
     const s = cur.state; const q = s.quiz ? s.quiz.answers : []; const qOk = q.filter(x => x.ok).length;
     const rows = [
@@ -480,10 +505,9 @@
       ${newAcc.length ? `<p class="pill good">Bączek ma nowe: ${newAcc.map(a => esc(a.name)).join(", ")}!</p>` : ""}
       <p class="pill info">${sk === 1 ? "Pierwszy dzień czytania!" : `Czytasz już ${sk} dni z rzędu!`}</p>
       <div class="fact"><b>Bączek opowiada:</b> ${esc(fact)}</div>
-      ${tomorrow ? `<p class="muted small">Jutro: „${esc(tomorrow.title)}”.</p>` : ""}
-      <div class="btns"><button class="go" id="homeBtn">Do domu</button></div><p class="saved"></p></section>`);
+      <div class="btns"><button class="go" id="moreBtn">Jeszcze jedna historia</button><button class="ghost" id="homeBtn">Do domu</button></div><p class="saved"></p></section>`);
     if (sc.stars >= 8) confetti();
-    $("homeBtn").addEventListener("click", home);
+    $("homeBtn").addEventListener("click", home); $("moreBtn").addEventListener("click", startDaily);
   }
 
   // ---------- СВОБОДНАЯ ТРЕНИРОВКА ----------
@@ -564,7 +588,7 @@
     if (!role) return gate("Hm, nie znam tego konta.", "Ta strona jest tylko dla rodziny. Poproś rodzica o dostęp.");
     if (!studentEmail) return gate("Nie znalazłem ucznia.", "Rodzic: dodaj ucznia w ustawieniach.");
     await db.loadAll();
-    cur = daily().find(s => s.day === todayKey()) || null;
+    cur = todays().find(s => !s.done) || todays().slice(-1)[0] || null;
     home();
   }
   // стартовая обложка: закрывается кнопкой START (это же нажатие разрешает звук)
