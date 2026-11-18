@@ -243,5 +243,153 @@ window.DZIK_TALK_AUDIO = {
 "Bez okularów… kto to? Ty czy szafa?": {
 "f": "381a42e6ee",
 "oink": false
+},
+"Zdejmuję. Oczy też muszą odpocząć.": {
+"f": "6d662c6c21",
+"oink": false
+},
+"Kokardka do szafy. Ale tylko na chwilkę!": {
+"f": "b3fb024bb5",
+"oink": false
+},
+"Bez kokardki jestem bardziej groźny. Grrr!": {
+"f": "d7649e98bb",
+"oink": false
+},
+"Uff, jak lekko! Zaraz odfrunę!": {
+"f": "e9dd165916",
+"oink": false
+},
+"Plecak zdjęty. Książki niech odpoczną.": {
+"f": "a70c87fa51",
+"oink": false
+},
+"Bose kopytka! Ale zimno w nóżki.": {
+"f": "d16d7fb823",
+"oink": false
+},
+"Kalosze zdjęte. Błoto, uważaj, idę!": {
+"f": "53a156bd71",
+"oink": false
+},
+"Czapka zdjęta. Mam fryzurę jak po burzy!": {
+"f": "703b73fb45",
+"oink": false
+},
+"Bez czapki też jestem przystojny, prawda?": {
+"f": "99c96ce38e",
+"oink": false
+},
+"Wianek zdjęty. Mistrz też czasem odpoczywa.": {
+"f": "dcc5cd32b4",
+"oink": false
+},
+"Schowam go ostrożnie, żeby się nie pogniótł.": {
+"f": "7970ffad21",
+"oink": false
+},
+"Na kapcie taty! Zasnęłaś?": {
+"f": "d39b69f815",
+"oink": false
+},
+"Na skarpetki taty! Halo, jest tu ktoś?": {
+"f": "2e9c93bd66",
+"oink": false
+},
+"Rety, rety, na krawat taty! Ruszamy?": {
+"f": "f3037645a8",
+"oink": false
+},
+"Na klucze taty! Gdzie się podziała moja czytelniczka?": {
+"f": "29cb875b7e",
+"oink": false
+},
+"Na pilota od telewizora taty! Klikamy dalej!": {
+"f": "cedd7bf062",
+"oink": false
+},
+"Ojej, tak wolno to nawet tata nie czyta gazety!": {
+"f": "90ba109ad9",
+"oink": false
+},
+"Tata by powiedział: no dalej! A ja mówię to samo, tylko grubszym głosem.": {
+"f": "46af07c273",
+"oink": false
+},
+"Na brodę mojego dziadka i kapcie twojego taty! Do roboty!": {
+"f": "03d0556138",
+"oink": false
+},
+"Tata mówi, że to ja jestem leniwy. A tu proszę, ktoś mnie przegania w drzemaniu!": {
+"f": "5f75cd4790",
+"oink": false
+},
+"Nuuudy… Policzyłem już wszystkie muchy na suficie.": {
+"f": "03d54c8d32",
+"oink": false
+},
+"Ziewam tak, że zaraz połknę książkę.": {
+"f": "44b05ddbe7",
+"oink": false
+},
+"Czekam, czekam… Chyba zapuszczę brodę.": {
+"f": "3a15b640ec",
+"oink": false
+},
+"Tak mi się nudzi, że zacząłem czytać instrukcję od kaloszy.": {
+"f": "e19b1a68ca",
+"oink": false
+},
+"Grrr! Ile można czekać? Mój brzuch już burczy ze złości!": {
+"f": "aa53d32629",
+"oink": false
+},
+"No nie! Kamizelka mi się marszczy od tego czekania!": {
+"f": "f3d826aaf7",
+"oink": false
+},
+"Hmpf! Obrażam się. Na trzy sekundy. Raz, dwa… dobra, już nie.": {
+"f": "1ca1c744cf",
+"oink": false
+},
+"Zaraz tupnę kopytkiem! O, tupnąłem. Czytamy?": {
+"f": "04673a62a9",
+"oink": false
+},
+"Przepraszam, a pani to kto? Moja czytelniczka była szybsza.": {
+"f": "02ec547c51",
+"oink": false
+},
+"Hm… czy my się znamy? Moja koleżanka już dawno by kliknęła.": {
+"f": "3757a96166",
+"oink": false
+},
+"Halo? Czy to ta sama dziewczynka, co wczoraj czytała jak rakieta?": {
+"f": "c5398e2a40",
+"oink": false
+},
+"Nie poznaję cię! Chyba ktoś podmienił moją czytelniczkę na żółwia.": {
+"f": "e899e2cbf8",
+"oink": false
+},
+"Ale gwiazdek! Aż mi się kręci w ryjku!": {
+"f": "5cc263b49e",
+"oink": false
+},
+"Gwiazdka do gwiazdki i robi się cała galaktyka! Brawo!": {
+"f": "7b1c11b630",
+"oink": false
+},
+"Tyle gwiazdek… chyba urosłem. Albo zjadłem za dużo.": {
+"f": "d90b125d6b",
+"oink": false
+},
+"Dodatkowe ćwiczenie zrobione! Ale z ciebie pracuś!": {
+"f": "f4c98890f1",
+"oink": false
+},
+"Jeszcze jedno ćwiczenie zaliczone. Podziwiam!": {
+"f": "9c6fb463f2",
+"oink": false
 }
 };
